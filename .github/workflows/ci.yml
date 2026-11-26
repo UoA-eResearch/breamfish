@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.4.0 # this action publishes no moving major tag
         with:
           python-version: "3.14" # the server's Python (Ubuntu 26.04)
 
