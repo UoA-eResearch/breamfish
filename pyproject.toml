@@ -15,8 +15,12 @@ breamfish = "breamfish.cli:main"
 
 [dependency-groups]
 dev = [
+    "contourpy>=1.4.0",
+    "numpy>=2.5.5",
     "pytest>=8",
+    "rasterio>=1.5.2",
     "ruff>=0.8",
+    "scipy>=1.18.1",
 ]
 
 [build-system]
@@ -29,9 +33,12 @@ packages = ["src/breamfish"]
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+src = ["src", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# scripts/seabed is the hand-run seabed build. It is tested here but never shipped.
+pythonpath = ["scripts"]
