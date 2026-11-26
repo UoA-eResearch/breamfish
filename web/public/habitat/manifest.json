@@ -1,0 +1,762 @@
+{
+ "schema": 1,
+ "built": "2026-11-26",
+ "seabed_built": "2026-11-26",
+ "species": {
+  "key": "snapper",
+  "name": "Snapper",
+  "scientific_name": "Chrysophrys auratus",
+  "applies_to": "Larger snapper, of about 27 cm and over",
+  "summary": "A habitat index, not a catch forecast. It ranks each 100 m square of the bay by how well its depth, its bottom and its distance from reef suit snapper in each season, going by published studies of north-east New Zealand. It says nothing about how many snapper are in the bay, or whether they will bite."
+ },
+ "grid": {
+  "west_e": 1724100,
+  "north_n": 6039600,
+  "cell_m": 100,
+  "ncols": 386,
+  "nrows": 384
+ },
+ "seasons": {
+  "summer": [
+   12,
+   1,
+   2
+  ],
+  "autumn": [
+   3,
+   4,
+   5
+  ],
+  "winter": [
+   6,
+   7,
+   8
+  ],
+  "spring": [
+   9,
+   10,
+   11
+  ]
+ },
+ "score": {
+  "dtype": "uint8",
+  "scale": 0.005,
+  "offset": -0.005
+ },
+ "index": {
+  "files": {
+   "summer": "snapper_index_summer.bin.gz",
+   "autumn": "snapper_index_autumn.bin.gz",
+   "winter": "snapper_index_winter.bin.gz",
+   "spring": "snapper_index_spring.bin.gz"
+  },
+  "how": "The weighted geometric mean of the factors that have data for the cell."
+ },
+ "classes": {
+  "method": "fifths",
+  "labels": [
+   "Lowest",
+   "Low",
+   "Middle",
+   "High",
+   "Highest"
+  ],
+  "breaks_stored": {
+   "summer": [
+    76,
+    89,
+    96,
+    125
+   ],
+   "autumn": [
+    112,
+    116,
+    117,
+    125
+   ],
+   "winter": [
+    115,
+    125,
+    126,
+    127
+   ],
+   "spring": [
+    75,
+    88,
+    100,
+    123
+   ]
+  },
+  "cells": {
+   "summer": [
+    20192,
+    20906,
+    18923,
+    19585,
+    23268
+   ],
+   "autumn": [
+    20462,
+    16114,
+    34947,
+    7645,
+    23706
+   ],
+   "winter": [
+    20324,
+    20608,
+    38785,
+    394,
+    22763
+   ],
+   "spring": [
+    20094,
+    21264,
+    21620,
+    19467,
+    20429
+   ]
+  },
+  "note": "The classes are cut season by season, a fifth of that season's rated water to each as nearly as can be, so the highest class is the best of the bay for that time of year. Water with the same index always shares a class, and where the curves are flat much of the bay has the same index, so a class can hold far more or less than a fifth. One season's map cannot be compared with another's."
+ },
+ "factors": [
+  {
+   "key": "depth",
+   "label": "Depth",
+   "unit": "m",
+   "weight": 1.0,
+   "confidence": "Moderate in spring and summer, low in autumn and winter",
+   "note": "Depths in the studies are depths of water; the grid's are below chart datum, about 1.6 m less at mid tide. The curves are too coarse for that to matter and it is not corrected.",
+   "limits": "No survey has measured snapper by depth in autumn or winter anywhere in this stock since one comparison of two depths in 1964 to 1966, and none has done so in Bream Bay in any season. The seasonal movement is also different on reef and on open ground: trawl catches on soft ground at 20 to 25 m peak in spring, while counts at reef edges peak in autumn. One depth curve per season cannot show both.",
+   "curve": {
+    "spring": {
+     "points": [
+      [
+       0,
+       0.2
+      ],
+      [
+       5,
+       0.5
+      ],
+      [
+       12,
+       1.0
+      ],
+      [
+       25,
+       1.0
+      ],
+      [
+       37,
+       0.6
+      ],
+      [
+       60,
+       0.3
+      ],
+      [
+       100,
+       0.05
+      ],
+      [
+       150,
+       0.0
+      ]
+     ],
+     "basis": "November trawl surveys of the Hauraki Gulf: against the 10 to 25 m strata, snapper density in the 25 to 50 m strata was 0.39 (2000) and 0.74 (2020), in 45 to 75 m 0.27 to 0.29, and in 75 to 150 m under 0.01. In 1964 to 1966 a station at 20 to 25 m caught about 14 times as many adults per hour in spring as stations at 25 to 65 m (read off a figure). Spawning peaks in November and December, in more than 20 m of water.",
+     "judgement": "Full suitability from 12 to 25 m; 37 m and 60 m are the middles of the two deeper strata. Trawl surveys do not go shallower than 10 m: the 0.5 at 5 m borrows the spring count at reef edges, which is 0.4 of the autumn one, and the 0.2 at the surface is a guess."
+    },
+    "summer": {
+     "points": [
+      [
+       0,
+       0.3
+      ],
+      [
+       5,
+       1.0
+      ],
+      [
+       25,
+       1.0
+      ],
+      [
+       37,
+       0.5
+      ],
+      [
+       75,
+       0.2
+      ],
+      [
+       100,
+       0.1
+      ],
+      [
+       150,
+       0.0
+      ]
+     ],
+     "basis": "After spawning, snapper disperse, often inshore to feed, and numbers at reef edges rise through summer. In a February 2021 trawl survey of the Bay of Plenty, density at 25 to 50 m was 0.22, and at 50 to 100 m 0.11, of that at 10 to 25 m; in the Hauraki Gulf in late November 2020 the 25 to 50 m figure was 0.74. In 1964 to 1966 the 20 to 25 m station caught 2 to 4.5 times the 25 to 65 m stations in summer.",
+     "judgement": "Full suitability from 5 to 25 m. The 0.5 at 37 m sits between the two surveys' 0.22 and 0.74. Nothing measures adults shallower than 5 m."
+    },
+    "autumn": {
+     "points": [
+      [
+       0,
+       0.4
+      ],
+      [
+       5,
+       1.0
+      ],
+      [
+       20,
+       1.0
+      ],
+      [
+       30,
+       0.8
+      ],
+      [
+       65,
+       0.8
+      ],
+      [
+       100,
+       0.3
+      ],
+      [
+       150,
+       0.05
+      ]
+     ],
+     "basis": "Baited-camera counts of snapper of 27 cm and over at reef edges are highest in autumn, 2.55 times the spring count across three places, and more than twice it at the Poor Knights, Cape Brett and the Mokohinau Islands. In 1964 to 1966 the 20 to 25 m station caught 0.6 to 0.9 times the 25 to 65 m stations in autumn: about level.",
+     "judgement": "Full suitability from 5 to 20 m for the reef-edge counts, and nearly flat out to 65 m for the trawl comparison. There are no autumn figures deeper than 65 m; the tail leans on adults being found to about 100 m and on 13% of the East Northland longline catch coming from deeper than that."
+    },
+    "winter": {
+     "points": [
+      [
+       0,
+       0.2
+      ],
+      [
+       5,
+       0.4
+      ],
+      [
+       20,
+       0.9
+      ],
+      [
+       30,
+       1.0
+      ],
+      [
+       70,
+       1.0
+      ],
+      [
+       100,
+       0.6
+      ],
+      [
+       150,
+       0.2
+      ],
+      [
+       200,
+       0.0
+      ]
+     ],
+     "basis": "The fishery's own summary says only that the winter grounds are thought to be in deeper water, with no depth and no source. In 1964 to 1966 the 20 to 25 m station caught 0.6 to 1.9 times the 25 to 65 m stations in winter: about level. Set-netters moved to deeper water from May. Snapper on reefs in winter are mostly residents.",
+     "judgement": "Flat from 30 to 70 m and only a little lower at 20 m. The 0.4 at 5 m borrows the spring-to-autumn ratio at reef edges, because no reef survey has been made in winter. Beyond 70 m it is a placeholder. This is the least sure of the four curves."
+    }
+   },
+   "evidence": [
+    {
+     "ref": "plenary2024",
+     "says": "Snapper are found to about 200 m and are most abundant in 15 to 60 m. Schools move onto spawning grounds usually in November and December; after spawning the fish disperse, often inshore to feeding grounds. The winter grounds are thought to be in deeper waters (section 2, Biology)."
+    },
+    {
+     "ref": "morrison2002",
+     "says": "Hauraki Gulf trawl survey, 7 to 19 November 2000. From its biomass and stratum-area tables (Tables 1 and 3), snapper density was 3.86 t/km² in the 10 to 25 m strata, 1.52 in 25 to 50 m, 1.11 in the outer gulf (10 to 75 m) and 0.027 in 75 to 150 m. The division is ours."
+    },
+    {
+     "ref": "parsons2022",
+     "says": "Trawl surveys of the Hauraki Gulf (20 November to 1 December 2020) and Bay of Plenty (1 to 14 February 2021). From Tables 1 and 6, snapper density in the gulf was 9.85 t/km² at 10 to 25 m, 7.31 at 25 to 50 m and 2.65 at 45 to 75 m; in the Bay of Plenty 3.64 at 10 to 25 m, 0.80 at 25 to 50 m and 0.40 at 50 to 100 m. The division is ours. The stratum from Bream Bay to Cape Rodney (10 to 50 m) held 50 t, 0.19 t/km², the least of the eleven gulf strata."
+    },
+    {
+     "ref": "paul1976",
+     "says": "Trawl catch per hour at one inshore station (Kawau, 20 to 25 m) and eight offshore stations (25 to 65 m), 1964 to 1966, by season (Fig. 26, p. 44, read off the figure). Adults at the offshore stations showed no clear seasonal change; the inshore station had an influx of 25 to 35 cm fish in spring and early summer (p. 45). Paul's seasons run a month later than the ones used here."
+    },
+    {
+     "ref": "crossland1980",
+     "says": "Egg surveys in 1974 to 1976: spawning was concentrated in the western Hauraki Gulf in more than 20 m; stations close inshore had almost no eggs (p. 15)."
+    },
+    {
+     "ref": "smith2014",
+     "says": "Baited underwater video on sand beside reef at Leigh, Tawharanui and Hahei, 1,045 drops over up to 14 years. Relative density of snapper of 27 cm and over was 0.74 in spring and 1.86 in autumn, a ratio of 2.55 (95% interval 1.35 to 5.15) (Table 5, p. 210)."
+    },
+    {
+     "ref": "denny2004",
+     "says": "Baited video at the Poor Knights, Cape Brett and the Mokohinau Islands, 1998 to 2002, to depths of up to 50 m: snapper were more than twice as common in autumn as in spring at all three."
+    },
+    {
+     "ref": "willis2003",
+     "says": "Inside reserves, snapper of 27 cm and over per drop rose by 3.9 from spring to autumn. Most snapper on reefs in winter are probably residents, and the summer rise is put down to the part of the population that migrates."
+    },
+    {
+     "ref": "langley2016",
+     "says": "East Northland bottom longline, 2007/08 to 2014/15: sets shallower than 100 m took 87% of the snapper catch (p. 9). In the catch-rate model, depth was the last term accepted and added 0.3% to the variation explained (Table A6)."
+    },
+    {
+     "ref": "compton2012",
+     "says": "Night towed video in the inner Hauraki Gulf, 5 to 42 m: depth was left out of the models because it showed no clear association with snapper (p. 222). A caution against making much of depth within that range."
+    },
+    {
+     "ref": "paul1977",
+     "says": "From landings of 1960 to 1971, set-netters moved to deeper water from May (pp. 48 to 49). Paul calls his reading of the seasonal movement tentative."
+    }
+   ],
+   "files": {
+    "summer": "snapper_depth_summer.bin.gz",
+    "autumn": "snapper_depth_autumn.bin.gz",
+    "winter": "snapper_depth_winter.bin.gz",
+    "spring": "snapper_depth_spring.bin.gz"
+   }
+  },
+  {
+   "key": "bottom",
+   "label": "Bottom type",
+   "weight": 1.0,
+   "confidence": "Low: no study compares adults across bottom types by one method at one depth",
+   "limits": "Adult snapper are found over every kind of bottom, so the scores are kept close together. Trawls cannot fish reef and divers do not count over sand, so reef and sediment have never been compared like for like. Two studies found that the small structure on a soft bottom (shell, sponges, burrows, horse mussels) matters more than whether it is sand or mud, and no map of this bay shows that structure. For most of the open bay the habitat map says only \"soft sediment\".",
+   "scores": {
+    "rock": 1.0,
+    "mud": 0.7,
+    "soft": 0.6,
+    "shell": 0.6,
+    "sand": 0.5,
+    "coarse": 0.4
+   },
+   "judgements": {
+    "rock": "Reef holds resident snapper year round and far more of them where it is not fished. This is for shallow reef: on reef at 40 to 60 m baited cameras saw no more snapper than on mud at 20 to 30 m, and the depth factor has to carry that.",
+    "mud": "The most snapper among soft bottoms in 33 years of Hauraki Gulf trawls, adults more so than juveniles; but mud there is also shallow and sheltered.",
+    "sand": "Below mud in the trawls, though some sandy stations caught well. In Queensland, sand neither raised nor lowered the odds of seeing snapper.",
+    "soft": "Sand or mud, not told apart by the habitat map: the middle of the two.",
+    "shell": "Densest on shell hash in one estuary; avoided by juveniles in two other studies. Only 18 cells of the bay are shell.",
+    "coarse": "Juveniles were persistently few on coarse ground in two studies. There is nothing on adults."
+   },
+   "evidence": [
+    {
+     "ref": "parsons2014",
+     "says": "Adults occupy sand, mud, rock, biogenic reef, estuaries and open coast, are most abundant shallower than 50 m, and depend less on structure than juveniles do (Adults)."
+    },
+    {
+     "ref": "kendrick2002",
+     "says": "Hauraki Gulf research trawls, 1,381 tows from 1964 to 1997, soft ground only: snapper were most abundant on mud in the inner gulf, with moderate to high catch rates at some sandy stations (p. 708); adults were more strongly tied to mud than juveniles (p. 709)."
+    },
+    {
+     "ref": "shears2006",
+     "says": "Baited video in 2004 on fine sand and mud at 20 to 30 m and on low reef at 40 to 60 m: 24 snapper in 32 drops on the sediment and 35 in 44 on the reef (Table 1, p. 10), no difference in total snapper; the larger fish tended to be on the reef (p. 12)."
+    },
+    {
+     "ref": "willis2003",
+     "says": "Snapper of 27 cm and over were about 14 times denser in three no-take reserves than on fished coast beside them, counted by baited video on sand within 50 m of reef."
+    },
+    {
+     "ref": "usmar2010",
+     "says": "Night video transects in the Mahurangi Harbour, 2005 to 2007: 2.3 snapper per 100 m² on shell hash, 1.5 on sand and 1.48 on horse-mussel beds, fewer on subtidal mud (pp. 65 to 67)."
+    },
+    {
+     "ref": "francis1995",
+     "says": "Kawau Bay trawls, 1987 to 1990, fish up to two years old: catch rates were negligible in every sample on muddy sand with 7 to 22% shell and at times large on sandy mud (pp. 569 to 570)."
+    },
+    {
+     "ref": "thrush2002",
+     "says": "In Kawau Bay the number and variety of small structures on the seabed explained 74% of the variation in juvenile snapper caught (p. 277); a sediment map alone is too coarse (p. 278)."
+    },
+    {
+     "ref": "terres2015",
+     "says": "Moreton Bay, Queensland, baited video 2008 to 2010: the odds of snapper being present were 1.7 times higher with rock and unchanged (0.99) with sand. From another stock; context only."
+    }
+   ],
+   "files": "snapper_bottom.bin.gz",
+   "class_labels": {
+    "rock": "Reef or rock",
+    "mud": "Mud or fine sediment",
+    "soft": "Soft sediment, sand or mud not told apart",
+    "shell": "Shell",
+    "sand": "Sand",
+    "coarse": "Gravel or coarse sediment"
+   }
+  },
+  {
+   "key": "reef",
+   "label": "Distance from reef",
+   "unit": "m",
+   "weight": 1.0,
+   "confidence": "Low: built from how far reef snapper range, not from counts of fish at each distance",
+   "points": [
+    [
+     0,
+     1.0
+    ],
+    [
+     100,
+     0.9
+    ],
+    [
+     300,
+     0.6
+    ],
+    [
+     700,
+     0.4
+    ]
+   ],
+   "basis": "Snapper living on reef keep to small home ranges: about 5.5 hectares on average, at most 650 m across, with half their time inside 55 to 200 m, and tagged fish were not seen again more than 500 m away. Reef fish moved a median of 0.7 km between tagging and recapture. Juveniles gather at the very edge of the reef, and the sediment within a few metres of it is grazed down.",
+   "judgement": "Highest on reef, nearly as high in the cell beside it, falling to 0.6 at 300 m (about the width of an average home range) and to 0.4 from 700 m (the widest home range) outwards. It does not fall to zero: snapper on open soft bottom are common and keep small ranges of their own. Distances are between the centres of 100 m cells, so the edge itself, where the effect is strongest, is not resolved.",
+   "limits": "No study in north-east New Zealand has counted adult snapper at increasing distances from reef beyond about 50 m. The home ranges come almost entirely from one no-take reserve, where fish may stay put more than on a fished coast, and some reef snapper leave for months. Reef here means cells the chart or the habitat map marks as rock; a reef they miss is missing here too.",
+   "evidence": [
+    {
+     "ref": "parsons2003",
+     "says": "Five snapper of 40 to 53 cm tracked by acoustic tags at Goat Island Bay in 2000: home ranges of 2.3 to 14 hectares, mean 5.55, at most 650 m across; half of each fish's time was spent within 55 to 200 m (Table 2, pp. 257 to 261). Four of the five were in the same range 50 weeks later."
+    },
+    {
+     "ref": "willis2001",
+     "says": "Of 117 individually tagged snapper at Goat Island, 49 were seen again, none more than 500 m from where it was tagged; some stayed over three years (p. 585)."
+    },
+    {
+     "ref": "parsons2014",
+     "says": "In the inner Hauraki Gulf, snapper tagged on shallow reef moved a median of 0.7 km, and those on deeper soft sediment 19 km (Adults, citing Parsons et al. 2011)."
+    },
+    {
+     "ref": "ross2007",
+     "says": "Diver counts: 70% of juvenile snapper were on the boundary between reef edge and sand, which was 17% of the habitat surveyed. Read in the paper's abstract and in the account of it in Morrison et al. 2014b (p. 117), which gives the numbers."
+    },
+    {
+     "ref": "langlois2005",
+     "says": "At 24 sites at Leigh, Tawharanui and Hahei, sediment animals 2 and 5 m from the reef differed from those at 15 and 30 m, and bivalves were fewer where snapper and rock lobster were denser. Read in the thesis chapter the paper was published from."
+    },
+    {
+     "ref": "hartill2003",
+     "says": "In an estuary, tagged snapper moved hundreds of metres a day within small areas of soft seabed: snapper away from reef are not just passing through. Abstract only."
+    },
+    {
+     "ref": "egli2004",
+     "says": "Of snapper tracked at Leigh in 2001 and 2002, some stayed all year, some left for good and some came back after up to 83 days away. Abstract only."
+    }
+   ],
+   "files": "snapper_reef.bin.gz"
+  }
+ ],
+ "references": {
+  "plenary2024": {
+   "citation": "Fisheries New Zealand (2024). Fisheries Assessment Plenary, May 2024: stock assessments and stock status. Snapper (SNA), introduction.",
+   "url": "https://fs.fish.govt.nz/Doc/25716/85A%20SNAintro%202024.pdf.ashx",
+   "read": "full text"
+  },
+  "morrison2002": {
+   "citation": "Morrison, M.A.; Francis, M.P.; Parkinson, D.M. (2002). Trawl survey of the Hauraki Gulf, 2000 (KAH0012). New Zealand Fisheries Assessment Report 2002/46.",
+   "url": "https://fs.fish.govt.nz/Doc/17392/2002%20FARs/02_46_FAR.pdf.ashx",
+   "read": "full text"
+  },
+  "parsons2022": {
+   "citation": "Parsons, D.M.; Bian, R. (2022). Trawl surveys of the Hauraki Gulf and Bay of Plenty in 2020 and 2021 to estimate the abundance of juvenile snapper. New Zealand Fisheries Assessment Report 2022/10.",
+   "url": "https://fs.fish.govt.nz/Doc/25135/FAR-2022-10-Juvenile-Snapper-Hauraki-Gulf-And-BOP-Trawl-Surveys-2020-2021-4263.pdf.ashx",
+   "read": "full text"
+  },
+  "paul1976": {
+   "citation": "Paul, L.J. (1976). A study on age, growth, and population structure of the snapper, Chrysophrys auratus (Forster), in the Hauraki Gulf, New Zealand. Fisheries Research Bulletin 13.",
+   "url": "https://webstatic.niwa.co.nz/library/frb13.pdf",
+   "read": "full text"
+  },
+  "paul1977": {
+   "citation": "Paul, L.J. (1977). The commercial fishery for snapper, Chrysophrys auratus (Forster), in the Auckland region, New Zealand, from 1900 to 1971. Fisheries Research Bulletin 15.",
+   "url": "https://webstatic.niwa.co.nz/library/frb15.pdf",
+   "read": "full text"
+  },
+  "crossland1980": {
+   "citation": "Crossland, J. (1980). The number of snapper, Chrysophrys auratus (Forster), in the Hauraki Gulf, New Zealand, based on egg surveys in 1974-75 and 1975-76. Fisheries Research Bulletin 22.",
+   "url": "https://webstatic.niwa.co.nz/library/frb22.pdf",
+   "read": "full text"
+  },
+  "smith2014": {
+   "citation": "Smith, A.N.H.; Anderson, M.J.; Millar, R.B.; Willis, T.J. (2014). Effects of marine reserves in the context of spatial and temporal variation: an analysis using Bayesian zero-inflated mixed models. Marine Ecology Progress Series 499: 203-216.",
+   "url": "https://doi.org/10.3354/meps10653",
+   "read": "full text"
+  },
+  "denny2004": {
+   "citation": "Denny, C.M.; Willis, T.J.; Babcock, R.C. (2004). Rapid recolonisation of snapper Pagrus auratus: Sparidae within an offshore island marine reserve after implementation of no-take status. Marine Ecology Progress Series 272: 183-190.",
+   "url": "https://doi.org/10.3354/meps272183",
+   "read": "full text"
+  },
+  "willis2003": {
+   "citation": "Willis, T.J.; Millar, R.B.; Babcock, R.C. (2003). Protection of exploited fish in temperate regions: high density and biomass of snapper Pagrus auratus (Sparidae) in northern New Zealand marine reserves. Journal of Applied Ecology 40: 214-227.",
+   "url": "https://doi.org/10.1046/j.1365-2664.2003.00775.x",
+   "read": "full text"
+  },
+  "langley2016": {
+   "citation": "Langley, A.D. (2016). An update of longline catch-per-unit-effort indices for snapper in SNA 1. New Zealand Fisheries Assessment Report 2016/59.",
+   "url": "https://fs.fish.govt.nz/Doc/24198/FAR-2016-59-SNA1-BLL-CPUE_web.pdf.ashx",
+   "read": "full text"
+  },
+  "compton2012": {
+   "citation": "Compton, T.J.; Morrison, M.A.; Leathwick, J.R.; Carbines, G.D. (2012). Ontogenetic habitat associations of a demersal fish species, Pagrus auratus, identified using boosted regression trees. Marine Ecology Progress Series 462: 219-230.",
+   "url": "https://doi.org/10.3354/meps09790",
+   "read": "full text"
+  },
+  "parsons2014": {
+   "citation": "Parsons, D.M. and 17 others (2014). Snapper (Chrysophrys auratus): a review of life history and key vulnerabilities in New Zealand. New Zealand Journal of Marine and Freshwater Research 48: 256-283.",
+   "url": "https://doi.org/10.1080/00288330.2014.892013",
+   "read": "full text of the sections on juveniles and adults"
+  },
+  "kendrick2002": {
+   "citation": "Kendrick, T.H.; Francis, M.P. (2002). Fish assemblages in the Hauraki Gulf, New Zealand. New Zealand Journal of Marine and Freshwater Research 36: 699-717.",
+   "url": "https://doi.org/10.1080/00288330.2002.9517124",
+   "read": "full text"
+  },
+  "shears2006": {
+   "citation": "Shears, N.T.; Usmar, N.R. (2006). The role of the Hauraki Gulf Cable Protection Zone in protecting exploited fish species: de facto marine reserve? DOC Research & Development Series 253.",
+   "url": "https://www.doc.govt.nz/globalassets/documents/science-and-technical/drds253.pdf",
+   "read": "full text"
+  },
+  "usmar2010": {
+   "citation": "Usmar, N.R. (2010). Ontogeny and ecology of snapper (Pagrus auratus) in an estuary, the Mahurangi Harbour. PhD thesis, University of Auckland.",
+   "url": "https://researchspace.auckland.ac.nz/handle/2292/5642",
+   "read": "the results pages cited"
+  },
+  "francis1995": {
+   "citation": "Francis, M.P. (1995). Spatial and seasonal variation in the abundance of juvenile snapper (Pagrus auratus) in the north-western Hauraki Gulf. New Zealand Journal of Marine and Freshwater Research 29: 565-579.",
+   "url": "https://doi.org/10.1080/00288330.1995.9516688",
+   "read": "full text"
+  },
+  "thrush2002": {
+   "citation": "Thrush, S.F.; Schultz, D.; Hewitt, J.E.; Talley, D. (2002). Habitat structure in soft-sediment environments and abundance of juvenile snapper Pagrus auratus. Marine Ecology Progress Series 245: 273-280.",
+   "url": "https://www.int-res.com/articles/meps2002/245/m245p273.pdf",
+   "read": "full text"
+  },
+  "terres2015": {
+   "citation": "Terres, M.A.; Lawrence, E.; Hosack, G.R.; Haywood, M.D.E.; Babcock, R.C. (2015). Assessing habitat use by snapper (Chrysophrys auratus) from baited underwater video data in a coastal marine park. PLoS ONE 10(8): e0136799.",
+   "url": "https://doi.org/10.1371/journal.pone.0136799",
+   "read": "full text"
+  },
+  "parsons2003": {
+   "citation": "Parsons, D.M.; Babcock, R.C.; Hankin, R.K.S.; Willis, T.J.; Aitken, J.P.; O'Dor, R.K.; Jackson, G.D. (2003). Snapper Pagrus auratus (Sparidae) home range dynamics: acoustic tagging studies in a marine reserve. Marine Ecology Progress Series 262: 253-265.",
+   "url": "https://doi.org/10.3354/meps262253",
+   "read": "full text"
+  },
+  "willis2001": {
+   "citation": "Willis, T.J.; Parsons, D.M.; Babcock, R.C. (2001). Evidence for long-term site fidelity of snapper (Pagrus auratus) within a marine reserve. New Zealand Journal of Marine and Freshwater Research 35: 581-590.",
+   "url": "https://doi.org/10.1080/00288330.2001.9517024",
+   "read": "full text"
+  },
+  "ross2007": {
+   "citation": "Ross, P.M.; Thrush, S.F.; Montgomery, J.C.; Walker, J.W.; Parsons, D.M. (2007). Habitat complexity and predation risk determine juvenile snapper (Pagrus auratus) and goatfish (Upeneichthys lineatus) behaviour and distribution. Marine and Freshwater Research 58: 1144-1151.",
+   "url": "https://doi.org/10.1071/MF07017",
+   "read": "abstract, and a description in Morrison et al. 2014 (New Zealand Aquatic Environment and Biodiversity Report 130)"
+  },
+  "langlois2005": {
+   "citation": "Langlois, T.J.; Anderson, M.J.; Babcock, R.C. (2005). Reef-associated predators influence adjacent soft-sediment communities. Ecology 86: 1508-1519.",
+   "url": "https://doi.org/10.1890/04-0234",
+   "read": "the thesis chapter it was published from"
+  },
+  "hartill2003": {
+   "citation": "Hartill, B.W.; Morrison, M.A.; Smith, M.D.; Boubée, J.; Parsons, D.M. (2003). Diurnal and tidal movements of snapper (Pagrus auratus, Sparidae) in an estuarine environment. Marine and Freshwater Research 54: 931-940.",
+   "url": "https://doi.org/10.1071/MF02095",
+   "read": "abstract"
+  },
+  "egli2004": {
+   "citation": "Egli, D.P.; Babcock, R.C. (2004). Ultrasonic tracking reveals multiple behavioural modes of snapper (Pagrus auratus) in a temperate no-take marine reserve. ICES Journal of Marine Science 61: 1137-1143.",
+   "url": "https://doi.org/10.1016/j.icesjms.2004.07.004",
+   "read": "abstract"
+  }
+ },
+ "not_rated": {
+  "reserve_cells": 26,
+  "note": "Water inside a no-take marine reserve is not rated."
+ },
+ "reach": {
+  "file": "reach.bin.gz",
+  "dtype": "uint8",
+  "bits": {
+   "boat": 1,
+   "kayak": 2,
+   "shore": 4
+  },
+  "within_m_of_mainland_shore": {
+   "boat": null,
+   "kayak": 3000,
+   "shore": 150
+  },
+  "cells": {
+   "boat": 102874,
+   "kayak": 24689,
+   "shore": 1832
+  },
+  "shore_points": "shore.geojson",
+  "note": "Round figures, not rules and not safety limits. Islands do not count as shore. Whether a stretch of shore can be reached on foot is not checked."
+ },
+ "validation": {
+  "window_m": 1000,
+  "records": 233,
+  "unused": {
+   "no_month": 9,
+   "outside_or_no_water": 2
+  },
+  "groups": [
+   {
+    "source": "tagging",
+    "label": "Caught for tagging (Ministry for Primary Industries tag database)",
+    "season": "summer",
+    "places": 57,
+    "auc": 0.635,
+    "share_in_top_two_fifths": 0.667,
+    "auc_low": 0.561,
+    "auc_high": 0.703
+   },
+   {
+    "source": "tagging",
+    "label": "Caught for tagging (Ministry for Primary Industries tag database)",
+    "season": "autumn",
+    "places": 26,
+    "auc": 0.606,
+    "share_in_top_two_fifths": 0.615,
+    "auc_low": 0.477,
+    "auc_high": 0.736
+   },
+   {
+    "source": "tagging",
+    "label": "Caught for tagging (Ministry for Primary Industries tag database)",
+    "season": "winter",
+    "places": 17,
+    "auc": 0.382,
+    "share_in_top_two_fifths": 0.353
+   },
+   {
+    "source": "tagging",
+    "label": "Caught for tagging (Ministry for Primary Industries tag database)",
+    "season": "spring",
+    "places": 25,
+    "auc": 0.576,
+    "share_in_top_two_fifths": 0.6,
+    "auc_low": 0.444,
+    "auc_high": 0.71
+   },
+   {
+    "source": "tagging",
+    "label": "Caught for tagging (Ministry for Primary Industries tag database)",
+    "season": null,
+    "places": 125,
+    "auc": 0.583,
+    "share_in_top_two_fifths": 0.6,
+    "auc_low": 0.526,
+    "auc_high": 0.637
+   },
+   {
+    "source": "trawl",
+    "label": "Research trawl tows that caught snapper (NIWA)",
+    "season": "summer",
+    "places": 9,
+    "auc": 0.651,
+    "share_in_top_two_fifths": 0.667
+   },
+   {
+    "source": "trawl",
+    "label": "Research trawl tows that caught snapper (NIWA)",
+    "season": "autumn",
+    "places": 6,
+    "auc": 0.601,
+    "share_in_top_two_fifths": 0.667
+   },
+   {
+    "source": "trawl",
+    "label": "Research trawl tows that caught snapper (NIWA)",
+    "season": "winter",
+    "places": 23,
+    "auc": 0.521,
+    "share_in_top_two_fifths": 0.478,
+    "auc_low": 0.429,
+    "auc_high": 0.615
+   },
+   {
+    "source": "trawl",
+    "label": "Research trawl tows that caught snapper (NIWA)",
+    "season": "spring",
+    "places": 52,
+    "auc": 0.636,
+    "share_in_top_two_fifths": 0.654,
+    "auc_low": 0.553,
+    "auc_high": 0.714
+   },
+   {
+    "source": "trawl",
+    "label": "Research trawl tows that caught snapper (NIWA)",
+    "season": null,
+    "places": 90,
+    "auc": 0.606,
+    "share_in_top_two_fifths": 0.611,
+    "auc_low": 0.547,
+    "auc_high": 0.665
+   },
+   {
+    "source": "sighting",
+    "label": "Photographed by divers and anglers (iNaturalist)",
+    "season": "summer",
+    "places": 5,
+    "auc": 0.877,
+    "share_in_top_two_fifths": 1.0
+   },
+   {
+    "source": "sighting",
+    "label": "Photographed by divers and anglers (iNaturalist)",
+    "season": "winter",
+    "places": 1,
+    "auc": 0.002,
+    "share_in_top_two_fifths": 0.0
+   },
+   {
+    "source": "sighting",
+    "label": "Photographed by divers and anglers (iNaturalist)",
+    "season": "spring",
+    "places": 1,
+    "auc": 0.974,
+    "share_in_top_two_fifths": 1.0
+   },
+   {
+    "source": "sighting",
+    "label": "Photographed by divers and anglers (iNaturalist)",
+    "season": null,
+    "places": 7,
+    "auc": 0.766,
+    "share_in_top_two_fifths": 0.857
+   },
+   {
+    "source": "all",
+    "label": "All records",
+    "season": null,
+    "places": 222,
+    "auc": 0.598,
+    "share_in_top_two_fifths": 0.613,
+    "auc_low": 0.559,
+    "auc_high": 0.639
+   }
+  ],
+  "how_to_read": "AUC is the chance that the index at a place snapper were recorded is higher than at a place picked at random from the bay's rated water in the same season. 0.5 is no better than chance. With no skill, 0.4 of the places would fall in the top two fifths.",
+  "cautions": [
+   "These are places someone caught or saw snapper, not a survey of where snapper are and are not. Tagging boats and trawlers work ground that suits their gear: trawls cannot fish reef.",
+   "Most of the tagging records are one programme in November and December 1993, and their positions are given to the nearest minute of arc, about 1.5 km by 1.9 km. Each place is therefore compared as the average of the index within 1 km of it, which blurs anything finer.",
+   "Places fishing is good are not the same as places snapper are: gear, bait, tide and time of day decide a catch."
+  ]
+ },
+ "limits": [
+  "It ranks places within the bay against each other. It does not say how many snapper are in the bay: in the November 2020 trawl survey, the stretch of coast from Bream Bay to Cape Rodney held fewer snapper for its area than any other part of the survey.",
+  "It is for larger snapper, of about 27 cm and over. Small snapper use the harbour and its seagrass, and are not what this shows.",
+  "It knows nothing of the day: tide, wind, water temperature, bait in the water and the time of day are not in it. The conditions panel covers what the weather is doing; nothing here covers what the fish are doing.",
+  "The squares are 100 m across, and bottom type away from charted rock comes from a habitat map drawn at a coarse scale in 2010. A reef the chart and that map do not show is not here either.",
+  "The weights and several of the curve points are judgement, marked as such on this page. None of it has been fitted to catches, because no record of catches in this bay is public."
+ ]
+}
