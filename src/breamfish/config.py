@@ -149,3 +149,20 @@ MODIFIERS = {
     "ebb_wind_kn": 12,  # ...against an onshore wind of this speed or more...
     "ebb_wave_m": 1.0,  # ...or against waves this high or higher
 }
+
+# --- Habitat index ------------------------------------------------------------------
+
+# How far from the mainland shore each style of fishing is taken to reach, in metres;
+# None is everywhere. Beyond it the habitat map is greyed out for that style. These are
+# round figures chosen here, not rules and not safety limits:
+#   kayak  3 km is about half an hour's paddle each way for a fishing kayak;
+#   shore  150 m takes in the water a cast can reach: the 100 m cells that touch the
+#          land, corner to corner.
+# Islands do not count as shore: landing on the Hen and Chickens is not allowed.
+REACH_M = {"boat": None, "kayak": 3000, "shore": 150}
+
+# When the index is checked against a place snapper were recorded, the place is taken
+# as everything within this distance east-west and north-south of the stated position.
+# The largest group of records (the 1993 tagging stations) is given to the nearest
+# minute of arc, about 1.5 by 1.9 km, and a trawl tow is a kilometre or more long.
+RECORD_WINDOW_M = 1000

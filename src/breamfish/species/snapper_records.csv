@@ -1,0 +1,240 @@
+# Places and times snapper (Chrysophrys auratus) were recorded in the bay.
+# Written by scripts/fetch_habitat_points.py; do not edit by hand.
+# tagging, trawl, divers: OBIS (obis.org), from the Ministry for Primary
+#   Industries tag database and NIWA research trawl and survey records.
+# sighting: iNaturalist (inaturalist.org) research-grade observations, by
+#   their observers; the station is the observation's number.
+source,station,lon,lat,year,month,records,method,licence
+divers,H11,174.69640,-35.94950,,,1,diver survey,CC BY 4.0
+divers,H13,174.71590,-35.97180,,,1,diver survey,CC BY 4.0
+divers,H3,174.76090,-35.88500,,,1,diver survey,CC BY 4.0
+divers,H4,174.78410,-35.88610,,,1,diver survey,CC BY 4.0
+divers,H8,174.69600,-35.89750,,,1,diver survey,CC BY 4.0
+divers,W11,174.58780,-35.85630,,,1,diver survey,CC BY 4.0
+divers,W14,174.59060,-35.83890,,,1,diver survey,CC BY 4.0
+divers,W15,174.60690,-35.83860,,,1,diver survey,CC BY 4.0
+divers,W4,174.49940,-35.83090,,,1,diver survey,CC BY 4.0
+sighting,inaturalist/40169634,174.71728,-35.88757,2018,11,1,photographed (iNaturalist),CC BY 4.0
+sighting,inaturalist/19712480,174.48239,-35.99363,2019,1,1,photographed (iNaturalist),CC BY 4.0
+sighting,inaturalist/105735837,174.74838,-35.89193,2022,1,1,photographed (iNaturalist),CC BY 4.0
+sighting,inaturalist/107289341,174.70051,-35.96517,2022,2,1,photographed (iNaturalist),CC BY 4.0
+sighting,inaturalist/107811374,174.71762,-35.96960,2022,2,1,photographed (iNaturalist),CC BY 4.0
+sighting,inaturalist/124624620,174.59560,-36.10572,2022,7,1,photographed (iNaturalist),CC BY 4.0
+sighting,inaturalist/256224865,174.59308,-36.05641,2024,12,1,photographed (iNaturalist),CC BY 4.0
+tagging,S310,174.51667,-35.85000,1983,4,1,caught for tagging,CC BY 4.0
+tagging,S294,174.50000,-35.90000,1984,12,2,caught for tagging,CC BY 4.0
+tagging,S309,174.41667,-35.80000,1984,12,1,caught for tagging,CC BY 4.0
+tagging,S49,174.50000,-35.90000,1984,12,1,caught for tagging,CC BY 4.0
+tagging,S288,174.48333,-35.91667,1985,1,1,caught for tagging,CC BY 4.0
+tagging,S308,174.51667,-35.85000,1985,1,1,caught for tagging,CC BY 4.0
+tagging,S311,174.61667,-35.88333,1985,1,1,caught for tagging,CC BY 4.0
+tagging,S92,174.41667,-35.81667,1985,1,1,caught for tagging,CC BY 4.0
+tagging,S110,174.75000,-35.83333,1985,2,1,caught for tagging,CC BY 4.0
+tagging,S279,174.58333,-35.95000,1985,2,1,caught for tagging,CC BY 4.0
+tagging,S289,174.70000,-35.96667,1985,2,2,caught for tagging,CC BY 4.0
+tagging,S294,174.65000,-36.03333,1985,2,1,caught for tagging,CC BY 4.0
+tagging,S295,174.60000,-35.86667,1985,2,1,caught for tagging,CC BY 4.0
+tagging,S308,174.61667,-35.83333,1985,2,1,caught for tagging,CC BY 4.0
+tagging,S309,174.60000,-35.86667,1985,2,1,caught for tagging,CC BY 4.0
+tagging,S315,174.63333,-35.80000,1985,2,1,caught for tagging,CC BY 4.0
+tagging,S58,174.78333,-35.85000,1985,2,1,caught for tagging,CC BY 4.0
+tagging,"174.5167,-35.8500",174.51667,-35.85000,1985,3,1,caught for tagging,CC BY 4.0
+tagging,S135,174.40000,-35.80000,1985,3,1,caught for tagging,CC BY 4.0
+tagging,S296,174.41667,-35.80000,1985,3,1,caught for tagging,CC BY 4.0
+tagging,S303,174.78333,-35.83333,1985,3,2,caught for tagging,CC BY 4.0
+tagging,S319,174.61667,-35.81667,1985,3,1,caught for tagging,CC BY 4.0
+tagging,S66,174.50000,-35.96667,1985,3,1,caught for tagging,CC BY 4.0
+tagging,S138,174.46667,-35.81667,1985,4,1,caught for tagging,CC BY 4.0
+tagging,S385,174.75000,-35.85000,1985,4,1,caught for tagging,CC BY 4.0
+tagging,S78,174.71667,-35.86667,1985,4,1,caught for tagging,CC BY 4.0
+tagging,S293,174.55000,-35.96667,1985,5,1,caught for tagging,CC BY 4.0
+tagging,S294,174.46667,-35.91667,1985,5,1,caught for tagging,CC BY 4.0
+tagging,S110,174.56667,-36.06667,1985,6,2,caught for tagging,CC BY 4.0
+tagging,S166,174.61667,-35.85000,1985,6,1,caught for tagging,CC BY 4.0
+tagging,S200,174.53333,-36.03333,1985,6,2,caught for tagging,CC BY 4.0
+tagging,S286,174.66667,-35.88333,1985,6,2,caught for tagging,CC BY 4.0
+tagging,S288,174.50000,-35.86667,1985,6,2,caught for tagging,CC BY 4.0
+tagging,S294,174.50000,-35.83333,1985,6,3,caught for tagging,CC BY 4.0
+tagging,S333,174.75000,-35.83333,1985,6,1,caught for tagging,CC BY 4.0
+tagging,S353,174.53333,-35.83333,1985,6,1,caught for tagging,CC BY 4.0
+tagging,S402,174.75000,-35.83333,1985,6,1,caught for tagging,CC BY 4.0
+tagging,S69,174.46667,-35.80000,1985,6,1,caught for tagging,CC BY 4.0
+tagging,S200,174.48333,-35.90000,1985,7,1,caught for tagging,CC BY 4.0
+tagging,S347,174.45000,-35.78333,1985,7,1,caught for tagging,CC BY 4.0
+tagging,S302,174.53333,-35.85000,1985,8,1,caught for tagging,CC BY 4.0
+tagging,S200,174.61667,-36.03333,1985,9,1,caught for tagging,CC BY 4.0
+tagging,S286,174.80000,-35.86667,1985,9,3,caught for tagging,CC BY 4.0
+tagging,S31,174.80000,-35.86667,1985,9,1,caught for tagging,CC BY 4.0
+tagging,S35,174.80000,-35.88333,1985,9,1,caught for tagging,CC BY 4.0
+tagging,S98,174.80000,-35.86667,1985,9,1,caught for tagging,CC BY 4.0
+tagging,S114,174.45000,-35.78333,1985,11,1,caught for tagging,CC BY 4.0
+tagging,S308,174.66667,-35.83333,1985,11,1,caught for tagging,CC BY 4.0
+tagging,S382,174.75000,-35.83333,1985,11,1,caught for tagging,CC BY 4.0
+tagging,S415,174.75000,-35.83333,1985,11,1,caught for tagging,CC BY 4.0
+tagging,S206,174.53333,-35.86667,1985,12,1,caught for tagging,CC BY 4.0
+tagging,S257,174.50000,-35.83333,1985,12,1,caught for tagging,CC BY 4.0
+tagging,S286,174.50000,-35.83333,1986,1,1,caught for tagging,CC BY 4.0
+tagging,S289,174.71667,-35.83333,1986,1,1,caught for tagging,CC BY 4.0
+tagging,S295,174.41667,-35.80000,1986,1,1,caught for tagging,CC BY 4.0
+tagging,S4,174.71667,-35.83333,1986,1,1,caught for tagging,CC BY 4.0
+tagging,S69,174.71667,-35.83333,1986,1,1,caught for tagging,CC BY 4.0
+tagging,S91,174.55000,-36.03333,1986,1,1,caught for tagging,CC BY 4.0
+tagging,S272,174.75000,-35.86667,1986,2,1,caught for tagging,CC BY 4.0
+tagging,S278,174.46667,-35.98333,1986,2,1,caught for tagging,CC BY 4.0
+tagging,S286,174.46667,-35.80000,1986,2,1,caught for tagging,CC BY 4.0
+tagging,S293,174.48333,-35.90000,1986,2,1,caught for tagging,CC BY 4.0
+tagging,S319,174.75000,-35.83333,1986,2,1,caught for tagging,CC BY 4.0
+tagging,"174.5333,-36.0167",174.53333,-36.01667,1986,3,1,caught for tagging,CC BY 4.0
+tagging,S296,174.75000,-35.88333,1986,3,2,caught for tagging,CC BY 4.0
+tagging,S308,174.43333,-35.78333,1986,3,1,caught for tagging,CC BY 4.0
+tagging,S310,174.56667,-35.78333,1986,3,3,caught for tagging,CC BY 4.0
+tagging,S321,174.75000,-35.83333,1986,3,1,caught for tagging,CC BY 4.0
+tagging,S327,174.58333,-35.81667,1986,3,1,caught for tagging,CC BY 4.0
+tagging,S272,174.56667,-35.86667,1986,4,1,caught for tagging,CC BY 4.0
+tagging,S294,174.46667,-35.91667,1986,4,2,caught for tagging,CC BY 4.0
+tagging,S33,174.61667,-36.05000,1986,4,1,caught for tagging,CC BY 4.0
+tagging,S363,174.56667,-35.80000,1986,4,1,caught for tagging,CC BY 4.0
+tagging,S272,174.58333,-36.05000,1986,6,1,caught for tagging,CC BY 4.0
+tagging,S307,174.55000,-35.80000,1986,6,1,caught for tagging,CC BY 4.0
+tagging,"174.5833,-35.8833",174.58333,-35.88333,1986,7,1,caught for tagging,CC BY 4.0
+tagging,S295,174.51667,-35.88333,1986,7,1,caught for tagging,CC BY 4.0
+tagging,S315,174.60000,-35.85000,1986,7,2,caught for tagging,CC BY 4.0
+tagging,"174.5500,-35.8667",174.55000,-35.86667,1986,9,1,caught for tagging,CC BY 4.0
+tagging,S175,174.50000,-36.00000,1986,9,1,caught for tagging,CC BY 4.0
+tagging,S286,174.48333,-35.90000,1987,1,1,caught for tagging,CC BY 4.0
+tagging,S295,174.58333,-35.85000,1987,1,2,caught for tagging,CC BY 4.0
+tagging,S315,174.75000,-35.86667,1987,1,1,caught for tagging,CC BY 4.0
+tagging,S378,174.75000,-35.85000,1987,1,1,caught for tagging,CC BY 4.0
+tagging,S167,174.50000,-35.83333,1987,5,1,caught for tagging,CC BY 4.0
+tagging,S65,174.75000,-35.88333,1987,5,1,caught for tagging,CC BY 4.0
+tagging,S367,174.51667,-35.83333,1988,1,1,caught for tagging,CC BY 4.0
+tagging,S328,174.73333,-36.03333,1988,5,1,caught for tagging,CC BY 4.0
+tagging,S335,174.73333,-36.03333,1988,5,1,caught for tagging,CC BY 4.0
+tagging,"174.4333,-35.9000",174.43333,-35.90000,1990,10,1,caught for tagging,CC BY 4.0
+tagging,MOA9301/7,174.58333,-35.90000,1993,11,69,caught for tagging,CC BY 4.0
+tagging,MOA9301/8,174.60000,-35.90000,1993,11,6,caught for tagging,CC BY 4.0
+tagging,SUN9301/10,174.53333,-35.91667,1993,11,112,caught for tagging,CC BY 4.0
+tagging,SUN9301/11,174.56667,-36.03333,1993,11,99,caught for tagging,CC BY 4.0
+tagging,SUN9301/12,174.48333,-35.96667,1993,11,99,caught for tagging,CC BY 4.0
+tagging,SUN9301/8,174.66667,-35.80000,1993,11,19,caught for tagging,CC BY 4.0
+tagging,SUN9301/9,174.75000,-35.90000,1993,11,21,caught for tagging,CC BY 4.0
+tagging,SUN9302/13,174.50000,-35.93333,1993,11,102,caught for tagging,CC BY 4.0
+tagging,SUN9302/14,174.58333,-35.83333,1993,11,42,caught for tagging,CC BY 4.0
+tagging,SUN9302/16,174.55000,-35.78333,1993,11,118,caught for tagging,CC BY 4.0
+tagging,SUN9302/17,174.50000,-35.88333,1993,11,111,caught for tagging,CC BY 4.0
+tagging,SUN9302/18,174.48333,-35.86667,1993,11,101,caught for tagging,CC BY 4.0
+tagging,SUN9302/19,174.48333,-35.90000,1993,11,89,caught for tagging,CC BY 4.0
+tagging,SUN9302/20,174.46667,-35.95000,1993,11,36,caught for tagging,CC BY 4.0
+tagging,TAQ9303/1,174.76667,-35.96667,1993,12,10,caught for tagging,CC BY 4.0
+tagging,TAQ9303/2,174.73333,-35.90000,1993,12,218,caught for tagging,CC BY 4.0
+tagging,TAQ9303/3,174.73333,-35.88333,1993,12,193,caught for tagging,CC BY 4.0
+tagging,TAQ9303/4,174.65000,-35.86667,1993,12,113,caught for tagging,CC BY 4.0
+tagging,TAQ9303/5,174.50000,-36.00000,1993,12,104,caught for tagging,CC BY 4.0
+tagging,TAQ9303/6,174.56667,-35.86667,1993,12,106,caught for tagging,CC BY 4.0
+tagging,TAQ9303/7,174.65000,-35.86667,1993,12,146,caught for tagging,CC BY 4.0
+tagging,TAQ9303/8,174.76667,-35.88333,1993,12,102,caught for tagging,CC BY 4.0
+tagging,TAQ9303/9,174.65000,-35.93333,1993,12,147,caught for tagging,CC BY 4.0
+tagging,kah9301/145,174.56667,-35.80000,1993,12,4,caught for tagging,CC BY 4.0
+tagging,kah9301/146,174.58333,-35.80000,1993,12,2,caught for tagging,CC BY 4.0
+tagging,kah9301/147,174.58333,-35.80000,1993,12,8,caught for tagging,CC BY 4.0
+tagging,kah9301/148,174.53333,-35.90000,1993,12,14,caught for tagging,CC BY 4.0
+tagging,kah9301/149,174.50000,-35.91667,1993,12,105,caught for tagging,CC BY 4.0
+tagging,kah9301/150,174.51667,-35.96667,1993,12,96,caught for tagging,CC BY 4.0
+tagging,kah9301/151,174.53333,-36.00000,1993,12,110,caught for tagging,CC BY 4.0
+tagging,kah9301/152,174.48333,-35.96667,1993,12,48,caught for tagging,CC BY 4.0
+tagging,kah9301/153,174.46667,-35.93333,1993,12,171,caught for tagging,CC BY 4.0
+tagging,kah9301/154,174.50000,-36.00000,1993,12,194,caught for tagging,CC BY 4.0
+tagging,kah9301/155,174.46667,-35.91667,1993,12,172,caught for tagging,CC BY 4.0
+tagging,kah9301/156,174.46667,-35.93333,1993,12,80,caught for tagging,CC BY 4.0
+tagging,kah9301/157,174.50000,-36.00000,1993,12,119,caught for tagging,CC BY 4.0
+tagging,kah9301/158,174.53333,-36.01667,1993,12,151,caught for tagging,CC BY 4.0
+trawl,55,174.52190,-35.87910,1901,3,1,research trawl,CC0
+trawl,57,174.56540,-36.00210,1901,3,1,research trawl,CC0
+trawl,ika6509/150,174.67500,-35.96670,1965,12,1,research trawl,CC BY 4.0
+trawl,ika6509/151,174.59170,-35.88170,1965,12,1,research trawl,CC BY 4.0
+trawl,ika6509/152,174.49170,-35.88330,1965,12,1,research trawl,CC BY 4.0
+trawl,ika6818/214,174.53330,-35.95000,1968,6,1,research trawl,CC BY 4.0
+trawl,ika7103/75,174.53330,-35.95000,1971,2,1,research trawl,CC BY 4.0
+trawl,ika7312/244,174.53330,-35.95000,1973,6,1,research trawl,CC BY 4.0
+trawl,ika7509/405,174.53330,-35.95000,1975,7,1,research trawl,CC BY 4.0
+trawl,ika8010/212,174.49170,-35.88330,1980,11,1,research trawl,CC BY 4.0
+trawl,ika8010/213,174.49170,-35.88330,1980,11,1,research trawl,CC BY 4.0
+trawl,ika8011/261,174.49170,-35.88330,1980,12,1,research trawl,CC BY 4.0
+trawl,kah8203/88,174.64170,-36.11000,1982,6,1,research trawl,CC BY 4.0
+trawl,kah8203/89,174.73000,-36.07830,1982,6,1,research trawl,CC BY 4.0
+trawl,kah8203/90,174.52670,-35.89330,1982,6,1,research trawl,CC BY 4.0
+trawl,kah8203/91,174.53670,-35.89170,1982,6,1,research trawl,CC BY 4.0
+trawl,kah8203/92,174.50000,-35.92330,1982,6,1,research trawl,CC BY 4.0
+trawl,kah8203/93,174.51330,-35.96330,1982,6,1,research trawl,CC BY 4.0
+trawl,kah8203/94,174.52830,-36.00670,1982,6,1,research trawl,CC BY 4.0
+trawl,kah8203/96,174.77670,-35.80670,1982,6,1,research trawl,CC BY 4.0
+trawl,kah8421/6,174.51670,-36.00170,1984,10,1,research trawl,CC BY 4.0
+trawl,kah8421/7,174.55000,-36.03330,1984,10,1,research trawl,CC BY 4.0
+trawl,kah8421/8,174.51670,-35.94000,1984,10,1,research trawl,CC BY 4.0
+trawl,kah8421/9,174.49000,-35.90000,1984,10,1,research trawl,CC BY 4.0
+trawl,kah8421/76,174.76330,-36.09170,1984,11,1,research trawl,CC BY 4.0
+trawl,kah8517/22,174.52330,-36.00330,1985,11,1,research trawl,CC BY 4.0
+trawl,kah8517/23,174.51170,-35.98000,1985,11,1,research trawl,CC BY 4.0
+trawl,kah8517/24,174.49670,-35.95170,1985,11,1,research trawl,CC BY 4.0
+trawl,kah8517/25,174.48830,-35.92830,1985,11,1,research trawl,CC BY 4.0
+trawl,kah8517/27,174.77500,-35.86830,1985,11,1,research trawl,CC BY 4.0
+trawl,kah8609/16,174.52500,-35.94670,1986,5,1,research trawl,CC BY 4.0
+trawl,kah8609/17,174.51670,-35.96670,1986,5,1,research trawl,CC BY 4.0
+trawl,kah8609/19,174.78170,-35.95500,1986,5,1,research trawl,CC BY 4.0
+trawl,kah8609/20,174.76000,-36.09830,1986,5,1,research trawl,CC BY 4.0
+trawl,kah8613/43,174.55170,-36.03330,1986,11,1,research trawl,CC BY 4.0
+trawl,kah8716/42,174.62330,-36.07330,1987,11,1,research trawl,CC BY 4.0
+trawl,kah8716/43,174.58330,-36.00000,1987,11,1,research trawl,CC BY 4.0
+trawl,kah8716/44,174.56500,-35.96330,1987,11,1,research trawl,CC BY 4.0
+trawl,kah8810/10,174.59830,-35.91000,1988,10,1,research trawl,CC BY 4.0
+trawl,kah8810/11,174.59000,-35.93830,1988,10,1,research trawl,CC BY 4.0
+trawl,kah8810/12,174.49000,-35.93670,1988,10,1,research trawl,CC BY 4.0
+trawl,kah8810/14,174.53670,-36.01000,1988,10,1,research trawl,CC BY 4.0
+trawl,kah8810/15,174.77500,-36.07000,1988,10,1,research trawl,CC BY 4.0
+trawl,kah8810/9,174.77330,-35.92000,1988,10,1,research trawl,CC BY 4.0
+trawl,kah8917/12,174.55170,-35.95420,1989,11,1,research trawl,CC BY 4.0
+trawl,kah8917/13,174.54000,-35.97170,1989,11,1,research trawl,CC BY 4.0
+trawl,kah8917/14,174.57330,-36.08330,1989,11,1,research trawl,CC BY 4.0
+trawl,kah8917/16,174.74830,-36.07830,1989,11,1,research trawl,CC BY 4.0
+trawl,kah9016/59,174.58500,-35.92000,1990,11,1,research trawl,CC BY 4.0
+trawl,kah9016/60,174.51330,-35.90830,1990,11,1,research trawl,CC BY 4.0
+trawl,kah9017/1,174.60500,-35.84650,1990,11,1,research trawl,CC BY 4.0
+trawl,kah9017/2,174.58300,-35.82450,1990,11,1,research trawl,CC BY 4.0
+trawl,kah9212/20,174.50820,-35.96980,1992,11,1,research trawl,CC BY 4.0
+trawl,kah9212/21,174.72580,-36.01620,1992,11,1,research trawl,CC BY 4.0
+trawl,kah9212/22,174.64630,-36.06770,1992,11,1,research trawl,CC BY 4.0
+trawl,kah9212/23,174.67520,-36.10780,1992,11,1,research trawl,CC BY 4.0
+trawl,kah9212/24,174.72680,-36.10120,1992,11,1,research trawl,CC BY 4.0
+trawl,kah9212/65,174.62900,-35.89230,1992,11,1,research trawl,CC BY 4.0
+trawl,kah9212/66,174.56020,-36.00530,1992,11,1,research trawl,CC BY 4.0
+trawl,kah9302/1,174.57730,-35.80020,1993,1,1,research trawl,CC BY 4.0
+trawl,kah9302/2,174.60470,-35.84680,1993,1,1,research trawl,CC BY 4.0
+trawl,kah9302/3,174.71670,-35.80950,1993,1,1,research trawl,CC BY 4.0
+trawl,kah9302/76,174.58570,-35.79950,1993,2,1,research trawl,CC BY 4.0
+trawl,kah9311/26,174.51900,-35.97600,1993,11,1,research trawl,CC BY 4.0
+trawl,kah9311/27,174.52820,-36.00870,1993,11,1,research trawl,CC BY 4.0
+trawl,kah9311/28,174.75920,-36.09870,1993,11,1,research trawl,CC BY 4.0
+trawl,kah9411/31,174.79270,-36.08170,1994,10,1,research trawl,CC BY 4.0
+trawl,kah9411/32,174.73570,-36.09520,1994,10,1,research trawl,CC BY 4.0
+trawl,kah9411/33,174.77570,-36.06370,1994,10,1,research trawl,CC BY 4.0
+trawl,kah9411/34,174.60170,-35.88870,1994,10,1,research trawl,CC BY 4.0
+trawl,kah9411/35,174.51480,-35.95970,1994,10,1,research trawl,CC BY 4.0
+trawl,kah9720/21,174.52450,-35.97330,1997,10,1,research trawl,CC BY 4.0
+trawl,kah9720/22,174.63050,-36.08850,1997,10,1,research trawl,CC BY 4.0
+trawl,kah9720/38,174.76980,-36.02220,1997,11,1,research trawl,CC BY 4.0
+trawl,kah0012/29,174.77320,-35.85480,2000,11,1,research trawl,CC BY 4.0
+trawl,kah0012/30,174.55980,-35.93820,2000,11,1,research trawl,CC BY 4.0
+trawl,kah0012/31,174.50480,-35.93280,2000,11,1,research trawl,CC BY 4.0
+trawl,kah0012/32,174.64220,-36.07420,2000,11,1,research trawl,CC BY 4.0
+trawl,kah1708/56,174.79533,-36.03467,2017,7,1,research trawl,CC BY 4.0
+trawl,kah1708/57,174.79650,-36.03100,2017,7,1,research trawl,CC BY 4.0
+trawl,kah1708/58,174.71117,-35.91017,2017,7,1,research trawl,CC BY 4.0
+trawl,kah1708/59,174.71967,-35.90483,2017,7,1,research trawl,CC BY 4.0
+trawl,kah1708/60,174.79617,-36.03950,2017,7,1,research trawl,CC BY 4.0
+trawl,kah1708/61,174.79667,-36.02883,2017,7,1,research trawl,CC BY 4.0
+trawl,kah1708/62,174.70350,-35.91633,2017,7,1,research trawl,CC BY 4.0
+trawl,kah1708/63,174.71150,-35.90717,2017,7,1,research trawl,CC BY 4.0
+trawl,kah1709/15,174.68450,-36.03867,2017,8,1,research trawl,CC BY 4.0
+trawl,kah1709/16,174.68367,-36.04700,2017,8,1,research trawl,CC BY 4.0
+trawl,kah1709/19,174.68667,-36.03433,2017,8,1,research trawl,CC BY 4.0
+trawl,kah1709/20,174.68533,-36.04300,2017,8,1,research trawl,CC BY 4.0
