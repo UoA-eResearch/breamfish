@@ -1,7 +1,7 @@
 // The map: a self-hosted OpenStreetMap basemap of the bay, the snapper habitat
 // index, the seabed layers (depth, how sure the depth is, bottom type,
-// contours), the no-take marine reserve, boat ramps, and one tappable marker
-// per forecast zone.
+// contours), the forecast wind drawn moving, the no-take marine reserve, boat
+// ramps, and one tappable marker per forecast zone.
 
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import * as maplibregl from "maplibre-gl";
@@ -12,7 +12,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
 import { comfortClass } from "./comfort";
-import type { SeabedManifest, Season, Style } from "./data";
+import type { SeabedManifest, Season, Style, VectorField } from "./data";
+import { FLOW_BANDS, FlowLayer } from "./flow";
 import { Habitat, type HabitatPoint } from "./habitat";
 import type { Rgba } from "./paint";
 import { BOTTOM_COLOUR, DEPTH_BANDS, Seabed, type Overlay, type SeabedPoint } from "./seabed";
@@ -176,6 +177,9 @@ export class BayMap {
   private season: Season = "summer";
   private style: Style = "boat";
   private contours = stored("contours") !== "off";
+  /** The forecast wind, drawn moving over everything else. */
+  private flow: FlowLayer;
+  private wind = stored("wind") !== "off";
   /** Which picture each painted source is showing now, by source id. */
   private showing = new Map<string, string>();
   private renderControl: () => void = () => {};
@@ -227,6 +231,8 @@ export class BayMap {
     this.map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
     this.map.dragRotate.disable();
     this.map.touchZoomRotate.disableRotation();
+    this.flow = new FlowLayer(this.map);
+    this.flow.setShown(this.wind);
     this.map.on("load", () => {
       this.addOverlays();
       void this.addSeabed();
@@ -448,6 +454,19 @@ export class BayMap {
     this.renderControl();
   }
 
+  /** The forecast wind over the map, or null when there is none fit to show. */
+  setWind(field: VectorField | null): void {
+    this.flow.setField(field);
+    this.renderControl();
+  }
+
+  /** The hour the panel is showing, as written in the published files: the wind follows it. */
+  setHour(iso: string): void {
+    const had = this.flow.available;
+    this.flow.setHour(iso);
+    if (had !== this.flow.available) this.renderControl();
+  }
+
   /** The layer picker and its key, as a map control under the zoom buttons. */
   private layerControl(seabed: Seabed): maplibregl.IControl {
     const { manifest } = seabed;
@@ -457,6 +476,8 @@ export class BayMap {
     const summary = el("summary");
     const key = el("ul", "", "layers-key");
     const note = el("p", "", "layers-note");
+    const windKey = el("ul", "", "layers-key layers-wind");
+    const windNote = el("p", "", "layers-note");
 
     const swatch = (name: string, label: string) => {
       const item = el("li", label);
@@ -527,6 +548,26 @@ export class BayMap {
       } else {
         note.textContent = "Tap the water for depth and bottom type.";
       }
+
+      windKey.replaceChildren();
+      windKey.hidden = !this.wind || !this.flow.available;
+      windNote.hidden = !this.wind;
+      const cell = this.flow.cellKm;
+      if (!this.flow.available) {
+        windNote.textContent = "No wind forecast to draw for this hour.";
+      } else {
+        for (const [i, band] of FLOW_BANDS.entries()) {
+          const item = el("li", band.label);
+          const line = el("i");
+          line.style.width = `${10 + i * 6}px`;
+          line.style.height = `${Math.max(1.5, band.width * 1.4)}px`;
+          item.prepend(line);
+          windKey.append(item);
+        }
+        // The forecast knows nothing finer than its own squares. Say how big they are.
+        const squares = cell ? ` in squares about ${Math.round(cell[0])} by ${Math.round(cell[1])} km` : "";
+        windNote.textContent = `Forecast wind for the hour shown in the panel: faster, longer and heavier is stronger. The forecast works${squares}, so it does not show shelter close under the hills.`;
+      }
     };
 
     const choices = el("fieldset");
@@ -559,7 +600,19 @@ export class BayMap {
     const linesRow = el("label", "", "layers-contours");
     linesRow.append(lines, "Depth contours");
 
-    box.append(summary, choices, seasons, linesRow, key, note);
+    const wind = el("input");
+    wind.type = "checkbox";
+    wind.checked = this.wind;
+    wind.addEventListener("change", () => {
+      this.wind = wind.checked;
+      store("wind", wind.checked ? "on" : "off");
+      this.flow.setShown(this.wind);
+      render();
+    });
+    const windRow = el("label", "", "layers-contours");
+    windRow.append(wind, "Wind");
+
+    box.append(summary, choices, seasons, linesRow, key, note, windRow, windKey, windNote);
     this.renderControl = render;
     render();
     return { onAdd: () => box, onRemove: () => box.remove() };

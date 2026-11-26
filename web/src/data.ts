@@ -62,6 +62,26 @@ export interface Conditions {
   thresholds: Thresholds;
 }
 
+/**
+ * wind.json: a field of arrows over the map for each hour. Mirrors publish.build_wind.
+ * u and v are the east and north parts of where the air is going. A row of the grid
+ * has its own longitudes, because the weather model's cells do not line up from one
+ * row to the next.
+ */
+export interface VectorField {
+  schema: number;
+  generated_at: string;
+  fetched_at: string;
+  /** The same hours as conditions.json. */
+  hours: string[];
+  unit: string;
+  source: { id: string; name: string; cell_km: [number, number] };
+  grid: { nrows: number; ncols: number; lats: number[]; lons: number[][] };
+  /** One list per hour, a value per grid point row by row from the north-west; null for an hour with none. */
+  u: (Series | null)[];
+  v: (Series | null)[];
+}
+
 export interface SourceStatus {
   id: string;
   name: string;

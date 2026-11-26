@@ -21,6 +21,7 @@ python3 scripts/fetch_habitat_points.py   # refresh the snapper records the inde
 
 - `src/breamfish/`: pipeline. `config.py` holds zones and every threshold; `publish.py` defines the JSON the frontend reads.
 - `web/src/data.ts`: the TypeScript mirror of that JSON. Change both sides together.
+- `wind.json` (`publish.build_wind`, `VectorField` in `data.ts`): the forecast wind at a lattice of model cells, set out in `config.WIND_LATTICE`. `web/src/flow.ts` draws it moving over the map and can draw any field published in that shape.
 - `web/public/`: committed static assets (tiles, fonts, sprites, layers, the seabed grids).
 - `scripts/seabed/` and `scripts/build_seabed.py`: the hand-run seabed build, described in [docs/seabed.md](docs/seabed.md). `web/src/seabed.ts` reads what `scripts/seabed/publish.py` writes; change both sides together.
 - `src/breamfish/habitat.py` and `src/breamfish/species/snapper.toml`: the habitat index and everything it is built from, described in [docs/habitat.md](docs/habitat.md). `scripts/build_habitat.py` writes `web/public/habitat/`; `web/src/habitat.ts` and `web/src/methods.ts` read it. `grids.py` and `nztm.py` read grids and project points without numpy.

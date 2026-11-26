@@ -1,13 +1,15 @@
 import "./style.css";
 import { drawCharts, type ChartSet } from "./charts";
 import { comfortClass, comfortSentence, compass, STYLES } from "./comfort";
-import { loadJson, type Conditions, type SeabedManifest, type Status, type Style, type Zone } from "./data";
+import { loadJson, type Conditions, type SeabedManifest, type Status, type Style, type VectorField, type Zone } from "./data";
 import { BayMap } from "./map";
 import { store, stored } from "./storage";
 import { ago, buildDays, fmtDay, fmtHour, fmtTime, isDaylight, localParts, type Day } from "./time";
 
 const REFRESH_MS = 10 * 60_000;
 const STALE_MS = 2 * 3_600_000;
+/** A wind field fetched longer ago than this is not drawn. The pipeline will not publish one older either. */
+const WIND_STALE_MS = 12 * 3_600_000;
 const WIDE = window.matchMedia("(min-width: 860px)");
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -204,6 +206,7 @@ function renderDay(): void {
 function renderMarkers(): void {
   const m = model!;
   const i = state.hover ?? state.pinned;
+  bayMap.setHour(m.conditions.hours[i]);
   bayMap.setZones(
     m.conditions.zones.map((z) => ({
       id: z.id,
@@ -363,10 +366,14 @@ window.addEventListener("resize", applyPadding);
 
 async function refresh(): Promise<void> {
   try {
-    const [conditions, status] = await Promise.all([
+    const [conditions, status, wind] = await Promise.all([
       loadJson<Conditions>("/data/conditions.json"),
       loadJson<Status>("/data/status.json").catch(() => null),
+      // The map draws the wind if it can. Everything else works without it.
+      loadJson<VectorField>("/data/wind.json").catch(() => null),
     ]);
+    const fresh = wind !== null && wind.schema === 1 && Date.now() - Date.parse(wind.fetched_at) < WIND_STALE_MS;
+    bayMap.setWind(fresh ? wind : null);
     const times = conditions.hours.map((h) => Date.parse(h));
     const now = Date.now();
     let nowIndex = 0;

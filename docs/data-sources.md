@@ -8,7 +8,7 @@ Study box: latitude -36.12 to -35.78, longitude 174.38 to 174.80. This includes 
 
 | Source | Used for | Access | Licence and attribution |
 |---|---|---|---|
-| [Open-Meteo forecast](https://open-meteo.com/en/docs) | Wind, gusts, direction, rain, cloud, air temperature | `api.open-meteo.com/v1/forecast`, no key, several points per request | Data CC BY 4.0. Free tier is **non-commercial**, under 10,000 calls a day. The pipeline makes two calls an hour. |
+| [Open-Meteo forecast](https://open-meteo.com/en/docs) | Wind, gusts, direction, rain, cloud, air temperature | `api.open-meteo.com/v1/forecast`, no key, several points per request | Data CC BY 4.0. Free tier is **non-commercial**, under 10,000 calls a day. The pipeline makes two requests an hour for the zones (three points each) and one for the wind lattice (48 points): about 1,300 calls a day as Open-Meteo counts them. |
 | [Open-Meteo marine](https://open-meteo.com/en/docs/marine-weather-api) | Wave and swell height, period, direction; sea temperature | `marine-api.open-meteo.com/v1/marine`, no key | Same terms |
 | [LINZ tide predictions](https://www.linz.govt.nz/products-services/tides-and-tidal-streams/tide-predictions) | High and low water at Marsden Point (standard port 079) | One CSV per year, 2023 to 2028: `static.charts.linz.govt.nz/tide-tables/maj-ports/csv/Marsden%20Point%20YYYY.csv` | CC BY 4.0, Toitū Te Whenua Land Information New Zealand |
 | DOC marine reserves | No-take reserve polygons | ArcGIS feature service, fetched by `scripts/fetch_static_layers.py` and committed | CC BY 4.0, Department of Conservation. Indicative; the Order in Council is the legal boundary. |
@@ -17,6 +17,7 @@ Study box: latitude -36.12 to -35.78, longitude 174.38 to 174.80. This includes 
 Things to know about these:
 
 - **Forecast resolution.** The weather model grid is about 9 km and the wave model about 8 km. Requested points snap to the nearest grid cell, and wave cells sit several kilometres offshore. Nothing here resolves the harbour entrance or the shelter of Urquharts Bay.
+- **The wind drawn on the map is the same forecast at 48 points** (probed 27 November 2026). A request for a lattice of 8 rows by 6 columns from 35.70° S, 174.30° E, with `cell_selection=nearest`, came back as 48 different model cells: rows 0.0703° of latitude apart (7.8 km), cells about 0.116° of longitude apart (10.5 km), each row starting a little further west than the one above. With `cell_selection=sea` several points collapse onto one cell, so the lattice uses `nearest` and includes the model's land cells. The response header `X-RateLimit-Cost` was 48: one call per point. `wind.json` publishes each row's own longitudes, and the pipeline refuses the answer if the points stop landing on rows of different cells, which would mean the model behind the API has changed.
 - **Tide times are local.** The LINZ CSV header says "Local Std or Daylight Time". The pipeline converts to UTC; a slip here is a one-hour error for half the year.
 - **The tide curve is interpolated** between predicted highs and lows with a cosine. Good to a few centimetres mid-tide, not a harmonic prediction.
 
@@ -90,6 +91,7 @@ Nobody publishes tidal currents for the harbour entrance. That gap is what the c
 | Published studies of snapper | Where snapper live by depth, season, bottom and distance from reef: trawl survey reports, baited-camera counts, acoustic tagging | Fisheries New Zealand and NIWA reports, journal papers | **in use**: the habitat index is built from them. Each is cited, with how much of it was read, in [`snapper.toml`](../src/breamfish/species/snapper.toml) and on the site's methods page. |
 | Fisheries New Zealand catch data | Commercial catch by statistical area | Areas 003 (about 14,300 km²) and 005 (about 2,660 km²) cover the box | probed (boundaries). Far too coarse to place fish within the bay. |
 | Recreational surveys | National Panel Survey, boat-ramp interviews and cameras | PDF reports only | read. No data at bay scale. |
+| Photographs on fishing pages | Where and when a picture was taken, if the file still says | Fetch the original files from club, charter and report pages whose terms allow it | not probed. How many keep a position is unknown. Social platforms strip it from the copies they show (read). Google's Custom Search JSON API, the only sanctioned route to its image search, is closed to new customers and ends on 1 January 2027 (read, 27 November 2026). See [roadmap.md](roadmap.md). |
 | Global Fishing Watch | AIS fishing effort at about 0.01° | API needs a free token; CC BY-NC | read. Inshore vessels here mostly carry no AIS, so expect little. |
 
 **There is no public fine-scale record of where fish are caught in this bay.** That is why the first fish layer is a habitat index tested against the sparse points above.
