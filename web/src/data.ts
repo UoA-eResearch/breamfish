@@ -129,7 +129,103 @@ export interface SeabedManifest {
     bottom_source: ClassLayer;
   };
   quality: { code: number; key: string; label: string; detail?: string; cells: number }[];
+  /** The same depth merge on a finer grid, for drawing only. */
+  drawing: {
+    cell_m: number;
+    ncols: number;
+    nrows: number;
+    note: string;
+    /** Stored as differences from a prediction; see loadPredicted in seabed.ts. */
+    depth: Omit<ScaledLayer, "label"> & { predictor: "plane" };
+    /** A depth_source code, plus past_shore on the fringe carried onto the land. */
+    source: { file: string; dtype: "uint8"; past_shore: number };
+    /** Codes as in layers.bottom and layers.bottom_source. */
+    bottom: { file: string; dtype: "uint8" };
+    bottom_source: { file: string; dtype: "uint8" };
+  };
   contours: { file: string; levels_m: number[]; note: string };
+}
+
+// --- Habitat index ----------------------------------------------------------------
+// /habitat/manifest.json, written by scripts/build_habitat.py from the species file
+// (src/breamfish/species/snapper.toml). The grids it describes are read in habitat.ts.
+
+export type Season = "summer" | "autumn" | "winter" | "spring";
+
+/** [value, suitability] pairs, with straight lines between them. */
+export type Curve = [number, number][];
+
+export interface HabitatFactor {
+  key: string;
+  label: string;
+  weight: number;
+  unit?: string;
+  confidence?: string;
+  note?: string;
+  limits?: string;
+  /** A factor that changes with the season has one curve for each. */
+  curve?: Record<Season, { points: Curve; basis: string; judgement: string }>;
+  points?: Curve;
+  basis?: string;
+  judgement?: string;
+  /** A factor scored by class (bottom type): suitability for each class key. */
+  scores?: Record<string, number>;
+  judgements?: Record<string, string>;
+  class_labels?: Record<string, string>;
+  evidence: { ref: string; says: string }[];
+  /** The factor's suitability grid, or one for each season. */
+  files: string | Record<Season, string>;
+}
+
+export interface ValidationGroup {
+  source: string;
+  label: string;
+  season: Season | null;
+  places: number;
+  auc: number;
+  auc_low?: number;
+  auc_high?: number;
+  share_in_top_two_fifths: number;
+}
+
+export interface HabitatManifest {
+  schema: number;
+  built: string;
+  species: { key: string; name: string; scientific_name: string; applies_to: string; summary: string };
+  grid: { west_e: number; north_n: number; cell_m: number; ncols: number; nrows: number };
+  /** The months of each season, 1 to 12. */
+  seasons: Record<Season, number[]>;
+  /** value = offset + scale * stored, for the index and for every factor; stored 0 is not rated. */
+  score: { dtype: "uint8"; scale: number; offset: number };
+  index: { files: Record<Season, string>; how: string };
+  classes: {
+    labels: string[];
+    /** A cell is in the class above every boundary its stored index reaches. */
+    breaks_stored: Record<Season, number[]>;
+    cells: Record<Season, number[]>;
+    note: string;
+  };
+  factors: HabitatFactor[];
+  references: Record<string, { citation: string; url: string; read: string }>;
+  not_rated: { reserve_cells: number; note: string };
+  reach: {
+    file: string;
+    /** The bit of the reach grid that is set where a style of fishing gets to a cell. */
+    bits: Record<Style, number>;
+    within_m_of_mainland_shore: Record<Style, number | null>;
+    cells: Record<Style, number>;
+    shore_points: string;
+    note: string;
+  };
+  validation: {
+    window_m: number;
+    records: number;
+    unused: { no_month: number; outside_or_no_water: number };
+    groups: ValidationGroup[];
+    how_to_read: string;
+    cautions: string[];
+  };
+  limits: string[];
 }
 
 export async function loadJson<T>(path: string): Promise<T> {

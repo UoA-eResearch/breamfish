@@ -44,6 +44,8 @@ export default defineConfig({
   worker: { format: "es" },
   build: {
     outDir: "dist",
+    // Two pages: the map, and how the habitat index is worked out.
+    rollupOptions: { input: { main: "index.html", methods: "methods.html" } },
     // MapLibre is one large dependency; the default 500 kB warning is noise here.
     chunkSizeWarningLimit: 1500,
   },

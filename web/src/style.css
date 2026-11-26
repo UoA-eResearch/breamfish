@@ -53,6 +53,16 @@
   --bottom-coarse: #52514e;
   --bottom-soft: #c3c2b7;
 
+  /* Snapper habitat: one hue, pale to strong from the lowest class to the
+     highest, so the best water is what stands out. A hue no other layer uses.
+     The veil greys out water a style of fishing does not reach. */
+  --habitat-1: #efedfb;
+  --habitat-2: #cfc9f4;
+  --habitat-3: #a79cea;
+  --habitat-4: #7a69dd;
+  --habitat-5: #4631ad;
+  --veil: #f3f2ee;
+
   --sheet-h: 0px;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 15px;
@@ -89,6 +99,13 @@
     --bottom-mud: #3987e5;
     --bottom-coarse: #f0efec;
     --bottom-soft: #898781;
+    /* On a dark map the best water is the brightest. */
+    --habitat-1: #2b2749;
+    --habitat-2: #453c80;
+    --habitat-3: #6250d6;
+    --habitat-4: #9f95ee;
+    --habitat-5: #e2ddfc;
+    --veil: #1a1a19;
   }
 }
 
@@ -177,6 +194,20 @@ a {
   font-size: 13px;
 }
 
+/* Open, it never runs under the bottom sheet, the attribution or the edge of
+   the screen: it scrolls. */
+#map .layers[open] {
+  max-height: calc(100dvh - var(--sheet-h) - 118px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 860px) {
+  #map .layers[open] {
+    max-height: calc(100dvh - 130px);
+  }
+}
+
 .layers summary {
   padding: 7px 10px;
   color: var(--ink);
@@ -199,6 +230,39 @@ a {
 .layers input {
   margin: 0;
   accent-color: var(--brand);
+}
+
+.layers-seasons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  margin: 6px 10px 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--plane);
+}
+
+.layers-seasons button {
+  padding: 4px 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.layers-seasons button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.layers-note a,
+.spot-note a {
+  color: var(--brand);
 }
 
 .layers-contours {
@@ -279,6 +343,44 @@ a {
 .spot-note {
   font-size: 12px;
   color: var(--ink-2);
+}
+
+/* The habitat rating in a popup: the class, then a bar for each factor. */
+.spot-habitat {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--grid);
+}
+
+.habitat-chip {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+
+.spot-habitat dl {
+  align-items: center;
+}
+
+.habitat-bar {
+  display: block;
+  width: 100%;
+  min-width: 90px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--grid);
+  overflow: hidden;
+}
+
+.habitat-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--brand);
 }
 
 .zone-marker {
@@ -916,4 +1018,101 @@ dialog th {
   background: var(--surface);
   font-size: 20px;
   line-height: 1;
+}
+
+/* --------------------------------------------------------------- methods page */
+
+html.doc,
+html.doc body {
+  height: auto;
+  overflow: auto;
+  background: var(--surface);
+}
+
+.doc-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 18px 48px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.doc-page h1 {
+  margin: 12px 0 16px;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.doc-page h2 {
+  margin: 36px 0 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--grid);
+  font-size: 21px;
+}
+
+.doc-page h3 {
+  margin: 28px 0 6px;
+  font-size: 18px;
+}
+
+.doc-page h4 {
+  margin: 16px 0 4px;
+  font-size: 15px;
+}
+
+.doc-page p {
+  margin: 8px 0;
+}
+
+.doc-page li {
+  margin: 6px 0;
+}
+
+.doc-page small {
+  color: var(--ink-2);
+}
+
+.doc-back {
+  font-size: 14px;
+}
+
+/* A wide table scrolls inside its own box; the page never scrolls sideways. */
+.doc-table {
+  margin: 12px 0 6px;
+  overflow-x: auto;
+}
+
+.doc-table table {
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.doc-table caption {
+  padding-bottom: 4px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.doc-table th,
+.doc-table td {
+  padding: 4px 10px;
+  border: 1px solid var(--grid);
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc-table th {
+  background: var(--plane);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.doc-sources {
+  padding-left: 18px;
+  font-size: 14px;
+}
+
+.doc-sources a {
+  overflow-wrap: anywhere;
 }
