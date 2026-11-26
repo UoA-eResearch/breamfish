@@ -369,7 +369,12 @@ export class BayMap {
     map.on("click", (event) => {
       const hits = map.queryRenderedFeatures(event.point, { layers: ["ramps", "reserves-fill"] });
       const named = (layer: string) => hits.find((f) => f.layer.id === layer)?.properties?.name as string | undefined;
-      const popup = new maplibregl.Popup({ closeButton: false, maxWidth: "280px" }).setLngLat(event.lngLat);
+      // Open the popup towards the middle of the map that is not under the panel, and
+      // fix that side, so it does not flip over while reveal() slides the map.
+      const { top, bottom } = this.padding;
+      const middle = (top + map.getContainer().clientHeight - bottom) / 2;
+      const anchor = event.point.y > middle ? "bottom" : "top";
+      const popup = new maplibregl.Popup({ closeButton: false, maxWidth: "280px", anchor }).setLngLat(event.lngLat);
       const ramp = named("ramps");
       if (ramp !== undefined) {
         popup.setText(`${ramp} (from OpenStreetMap; check access before you tow)`).addTo(map);
@@ -383,13 +388,16 @@ export class BayMap {
         content.append(el("p", `${reserve}: no-take. All fishing is prohibited here.`, "spot-rule"));
       }
       if (spot) content.append(describeSpot(spot));
-      this.reveal(popup.setDOMContent(content).addTo(map));
+      popup.setDOMContent(content).addTo(map);
+      // Once it has been laid out, so its real size and place are known.
+      requestAnimationFrame(() => this.reveal(popup));
     });
     map.on("mouseenter", "ramps", () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", "ramps", () => (map.getCanvas().style.cursor = ""));
   }
 
-  /** Slide the map just far enough that a popup is not hidden under the panel or the top bar. */
+  /** Shift the map just far enough that a popup is not hidden under the panel or the top bar.
+      In one step: an eased move can be cut short by the next camera change. */
   private reveal(popup: maplibregl.Popup): void {
     const box = popup.getElement()?.getBoundingClientRect();
     if (!box) return;
@@ -397,7 +405,7 @@ export class BayMap {
     const { top, right, bottom, left } = this.padding;
     const dx = Math.max(0, box.right - (view.right - right)) || Math.min(0, box.left - (view.left + left));
     const dy = Math.max(0, box.bottom - (view.bottom - bottom)) || Math.min(0, box.top - (view.top + top));
-    if (dx || dy) this.map.panBy([dx, dy], { duration: 250 });
+    if (dx || dy) this.map.panBy([dx, dy], { duration: 0 });
   }
 
   /** Keep the bay centred in the part of the map the panel does not cover. */
