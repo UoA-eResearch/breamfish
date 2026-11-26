@@ -1,6 +1,8 @@
 # The seabed layer
 
-Stage 1 of the [roadmap](roadmap.md). The site shows depth, how far that depth can be trusted, bottom type and depth contours, and a tap on the water reads them for one spot. Stage 2 builds the snapper habitat index on these grids.
+Stage 1 of the [roadmap](roadmap.md). The site shows depth, how far that depth can be trusted, bottom type and depth contours, and a tap on the water reads them for one spot. The snapper habitat index ([habitat.md](habitat.md)) is built on these grids.
+
+There are two sets of grids. The **100 m grid** is the one every computed number comes from: slope, roughness, the distances, and the habitat index. The **20 m drawing grid** is the same sources laid out five times finer, for the map to paint when zoomed in and for a tap to read. Nothing is computed from the drawing grid.
 
 Everything here is static. `scripts/build_seabed.py` is run by hand on a development machine, and its outputs are committed under `web/public/seabed/`. The server never runs it and never installs the libraries it needs.
 
@@ -18,13 +20,16 @@ The script downloads each source once into `data/seabed/raw/` (ignored by git). 
 | File | What |
 |---|---|
 | `web/public/seabed/manifest.json` | Grid, value scaling, class legends, source and licence for each layer |
-| `web/public/seabed/*.bin.gz` | One grid per layer: depth, depth source, slope, roughness, bottom, bottom source |
-| `web/public/seabed/contours.geojson` | Depth contours of the merged grid |
+| `web/public/seabed/*.bin.gz` | One 100 m grid per layer: depth, depth source, slope, roughness, bottom, bottom source, distance to reef, distance to the mainland shore |
+| `web/public/seabed/drawing_*.bin.gz` | The 20 m drawing grid: depth, depth source, bottom, bottom source |
+| `web/public/seabed/contours.geojson` | Depth contours, drawn from the 20 m depth |
 | `docs/seabed-report.md` | Cell counts and the checks against charted soundings for this build |
 
 Review the diff, read the report, and commit all of them together. The same inputs give byte-identical grids, so a diff means the data changed.
 
-The code is in `scripts/seabed/`: `grid.py` (the grid), `depth.py` (datums, merge, slope, roughness), `bottom.py` (bottom type), `sources.py` (downloads), `publish.py` (file formats), `report.py` (the checks). `tests/test_seabed_*.py` cover them without touching the network; `tests/test_seabed_build.py` runs the whole build on a made-up scene.
+Rebuild the habitat index afterwards (`uv run python scripts/build_habitat.py`): it reads these grids, and a test fails if it is out of date.
+
+The code is in `scripts/seabed/`: `grid.py` (the grid), `depth.py` (datums, merge, slope, roughness), `bottom.py` (bottom type), `distance.py` (distance to reef and to the mainland shore), `drawing.py` (the 20 m drawing grid), `sources.py` (downloads), `publish.py` (file formats), `report.py` (the checks). `tests/test_seabed_*.py` cover them without touching the network; `tests/test_seabed_build.py` runs the whole build on a made-up scene.
 
 ## The grid
 
@@ -81,11 +86,37 @@ Most specific source first; `bottom_source` records which.
 
 The classes are reef or rock, sand, mud or fine sediment, shell, gravel or coarse sediment, **soft sediment (sand or mud not told apart)**, and not mapped. The soft-sediment class is there because the habitat map uses it for most of open Bream Bay; publishing it as sand or as mud would be a guess.
 
+## Distances
+
+Two more 100 m layers are worked out from the ones above, for the habitat index and for the reach of each fishing style (`scripts/seabed/distance.py`):
+
+- **Distance to the nearest reef**: metres from each cell's centre to the centre of the nearest cell of reef or rock, 0 on reef.
+- **Distance to the mainland shore**: metres to the nearest cell of land that is not an island. Mainland is every piece of land that runs off the edge of the grid; the Hen and Chickens, Sail Rock and the harbour's islets lie wholly inside it.
+
+Both are between cell centres, so they come in steps of a cell.
+
+## The 20 m drawing grid
+
+A 100 m cell is a hectare. Painted on a map zoomed in to a few metres a pixel it is a blur or a staircase, and it throws away what the LiDAR and the multibeam measured and the outlines the chart and the habitat map draw. So the same sources, in the same order of trust, are laid out again on 20 m cells (`scripts/seabed/drawing.py`), 1,930 columns by 1,920 rows:
+
+- **Depth** is the LiDAR (its 10 m cells in fours) or the multibeam where a 20 m cell has one of its own. Everywhere else it is the surface through the charted soundings and contours, the same surface as on the 100 m grid, read at 20 m and held inside the chart's depth areas as drawn at that scale. Within a few cells of a survey the charted water slides to the survey's own nearest depth, so there is no step at the join. The finished surface is smoothed lightly (a Gaussian of one cell), because survey noise of a few centimetres on flat sand would otherwise end every depth band in a speckled fringe.
+- **The shoreline** is the edge of the survey where a survey reaches the shore, and elsewhere the chart's coastline rasterised at 20 m. The LiDAR tiles carry no land, so it cannot be taken from them alone.
+- **Bottom type** keeps the outlines of charted rock areas and of the habitat map as they are drawn. A charted rock or a seabed sample is a note at a point: it is drawn as a dot on the 100 m cell it speaks for.
+- **Contours** are drawn from this depth, so the lines sit on the colour steps.
+
+The grid runs five cells past the shore, repeating the nearest water, and marks those cells by adding 128 to the source code. The map draws its own land (the OpenStreetMap coastline) over the seabed layers, so that coastline is the one seen, with no gap or overlap where it and the chart's differ by a few tens of metres. A tap reads nothing from the fringe.
+
+Once the browser has the drawing grid, a tap reads depth, bottom type and their sources from it, so the popup agrees with the colour under the finger. Slope and roughness are always the 100 m cell's.
+
+The drawing grid adds no information to the charted water, where there is none to add. *How sure the depth is* still says which is which.
+
 ## File format
 
-Each `.bin.gz` is the grid's values as unsigned integers, row by row from the north-west corner, little-endian, gzip-compressed. Stored 0 always means "nothing here". For depth, slope and roughness the manifest gives `scale` and `offset`: value = offset + scale × stored. The other layers store class codes listed in the manifest.
+Each `.bin.gz` is the grid's values as unsigned integers, row by row from the north-west corner, little-endian, gzip-compressed. Stored 0 always means "nothing here". For depth, slope, roughness and the distances the manifest gives `scale` and `offset`: value = offset + scale × stored. The other layers store class codes listed in the manifest.
 
-The browser reads them in `web/src/seabed.ts`. It converts a tapped longitude and latitude to NZTM itself, and checks that arithmetic against five points in the manifest that were computed by PROJ before it trusts any tap. Reading a grid in Python needs only the standard library:
+The 20 m depth has 25 times the cells, so it is stored as what is left after guessing each cell from its neighbours (`to_bytes_predicted` in `scripts/seabed/publish.py`; the manifest calls this `"predictor": "plane"`). The guess is west + north - north-west; the difference, modulo 65,536 as a signed number, is folded to an unsigned one (0, -1, 1, -2 become 0, 1, 2, 3); all the low bytes are written first, then all the high bytes. That is 550 kB in place of 1.25 MB. The browser fetches the drawing grid only once the map is zoomed in.
+
+The browser reads them in `web/src/seabed.ts` and paints them, a map tile at a time and at the resolution of the screen, in `web/src/paint.ts`. `src/breamfish/grids.py` reads the 100 m layers with the standard library. It converts a tapped longitude and latitude to NZTM itself, and checks that arithmetic against five points in the manifest that were computed by PROJ before it trusts any tap. Reading a grid in Python needs only the standard library:
 
 ```python
 import array, gzip, json
@@ -101,6 +132,6 @@ metres = layer["offset"] + layer["scale"] * depth[row * ncols + col]  # if the s
 ## Limits
 
 - **Not for navigation.** The charts say so and so does the site.
-- A 100 m cell is a mean over a hectare. A pinnacle, a hole or a small reef inside one cell does not show.
+- A 100 m cell is a mean over a hectare, and slope, roughness and the habitat index are worked out on those. The drawing grid shows features down to about 40 m where the LiDAR or the multibeam measured them; a pinnacle or a hole smaller than that does not show.
 - Away from the LiDAR and the multibeam, depth is drawn between charted soundings: about a third of the water. About 8% rests on surveys of 1955 to 1962, mostly a strip between the LiDAR and the multibeam in the south of the bay and a patch north of Bream Head.
 - Bottom type away from charted rock is only as good as a 2010 habitat map compiled at a coarse scale.

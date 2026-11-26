@@ -38,6 +38,10 @@ DEPTH = Scaling("uint16", 0.1, -10.0)
 SLOPE = Scaling("uint8", 0.25, -0.25)
 # Roughness to 2 cm, 0 to 5.08 m; rougher is stored as 5.08.
 ROUGHNESS = Scaling("uint8", 0.02, -0.02)
+# Distance to the nearest reef to 25 m, 0 to 6,350 m; farther is stored as 6,350.
+REEF_DISTANCE = Scaling("uint8", 25.0, -25.0)
+# Distance to the mainland shore to 50 m, 0 to 12,700 m; farther is stored as 12,700.
+SHORE_DISTANCE = Scaling("uint8", 50.0, -50.0)
 
 
 def encode(values: np.ndarray, scaling: Scaling) -> np.ndarray:
@@ -53,21 +57,63 @@ def decode(stored: np.ndarray, scaling: Scaling) -> np.ndarray:
     return np.where(stored == 0, np.nan, values)
 
 
-def to_bytes(stored: np.ndarray) -> bytes:
+def to_bytes(stored: np.ndarray, shape: tuple[int, int] = grid.SHAPE) -> bytes:
     """Gzip of the grid, row by row from the north-west, little-endian.
 
     mtime is fixed so the same grid always gives the same file, and git shows a change
     only when the data changed.
     """
-    if stored.shape != grid.SHAPE:
-        raise ValueError(f"grid of shape {stored.shape}, expected {grid.SHAPE}")
+    if stored.shape != shape:
+        raise ValueError(f"grid of shape {stored.shape}, expected {shape}")
     raw = stored.astype(stored.dtype.newbyteorder("<")).tobytes()
     return gzip.compress(raw, compresslevel=9, mtime=0)
 
 
-def from_bytes(data: bytes, dtype: str) -> np.ndarray:
+def from_bytes(data: bytes, dtype: str, shape: tuple[int, int] = grid.SHAPE) -> np.ndarray:
     raw = np.frombuffer(gzip.decompress(data), dtype=np.dtype(dtype).newbyteorder("<"))
-    return raw.reshape(grid.SHAPE)
+    return raw.reshape(shape)
+
+
+# --- The 20 m drawing grid ------------------------------------------------------------
+#
+# Twenty-five times the cells of the 100 m grid, so it is stored as what is left after
+# guessing each cell from its neighbours: on a smooth seabed that is nearly nothing, and
+# the file comes out at under half the size of the plain grid.
+
+PREDICTOR = "plane"
+
+
+def to_bytes_predicted(stored: np.ndarray, shape: tuple[int, int]) -> bytes:
+    """Gzip of a uint16 grid, each cell stored as its difference from a prediction.
+
+    The prediction is west + north - north-west (the plane through three neighbours;
+    cells off the grid count as 0). The difference is taken modulo 65,536 as a signed
+    16-bit number and folded to an unsigned one (0, -1, 1, -2 ... become 0, 1, 2, 3 ...),
+    so small differences of either sign are small numbers. All the low bytes are written
+    first, then all the high bytes, which are almost all zero.
+    """
+    if stored.shape != shape or stored.dtype != np.uint16:
+        raise ValueError(f"expected a uint16 grid of shape {shape}")
+    values = stored.astype(np.int64)
+    predicted = np.zeros_like(values)
+    predicted[:, 1:] += values[:, :-1]
+    predicted[1:, :] += values[:-1, :]
+    predicted[1:, 1:] -= values[:-1, :-1]
+    difference = (values - predicted + 32768) % 65536 - 32768
+    folded = np.where(difference >= 0, 2 * difference, -2 * difference - 1).astype(np.uint16)
+    raw = (folded & 255).astype(np.uint8).tobytes() + (folded >> 8).astype(np.uint8).tobytes()
+    return gzip.compress(raw, compresslevel=9, mtime=0)
+
+
+def from_bytes_predicted(data: bytes, shape: tuple[int, int]) -> np.ndarray:
+    """The inverse of to_bytes_predicted."""
+    raw = np.frombuffer(gzip.decompress(data), dtype=np.uint8)
+    cells = shape[0] * shape[1]
+    folded = raw[:cells].astype(np.int64) | (raw[cells:].astype(np.int64) << 8)
+    difference = np.where(folded % 2 == 0, folded // 2, -(folded + 1) // 2).reshape(shape)
+    # Each difference is a cell minus its west and north neighbours plus the north-west
+    # one, so summing along both axes gives the cells back.
+    return (difference.cumsum(axis=0).cumsum(axis=1) % 65536).astype(np.uint16)
 
 
 def scaled_layer(scaling: Scaling, **described) -> dict:
@@ -122,17 +168,27 @@ def simplify(line: np.ndarray, tolerance_m: float) -> np.ndarray:
 
 
 def contours(
-    depth: np.ndarray, levels, to_lonlat, tolerance_m: float = 15.0, min_length_m: float = 600.0
+    depth: np.ndarray,
+    levels,
+    to_lonlat,
+    tolerance_m: float = 15.0,
+    min_length_m: float = 600.0,
+    sigma_cells: float = 1.0,
 ) -> dict:
-    """Depth contours of the merged grid as GeoJSON lines in longitude and latitude.
+    """Depth contours of a depth grid as GeoJSON lines in longitude and latitude.
 
-    to_lonlat(easting, northing) -> (lon, lat) arrays. Lines shorter than min_length_m
-    are dropped: at 100 m cells they are noise, not seabed features.
+    depth covers the whole grid at any cell size that nests in it (the 100 m grid or the
+    20 m drawing grid). to_lonlat(easting, northing) -> (lon, lat) arrays. The grid is
+    smoothed by sigma_cells first (0 for none), so the lines are not stair-stepped, and
+    lines shorter than min_length_m are dropped: they are noise, not seabed features.
     """
     from contourpy import contour_generator
 
-    cell_e, cell_n = grid.centres()
-    surface = np.ma.masked_invalid(smooth(depth))
+    rows, cols = depth.shape
+    cell_m = grid.CELL_M * grid.NROWS / rows
+    cell_e = grid.WEST_E + (np.arange(cols) + 0.5) * cell_m
+    cell_n = grid.NORTH_N - (np.arange(rows) + 0.5) * cell_m
+    surface = np.ma.masked_invalid(smooth(depth, sigma_cells) if sigma_cells else depth)
     generator = contour_generator(x=cell_e, y=cell_n, z=surface)
     features = []
     for level in levels:

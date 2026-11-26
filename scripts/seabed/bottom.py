@@ -93,9 +93,11 @@ def merge(layers) -> tuple[np.ndarray, np.ndarray]:
 
     layers is a list of (source code, class grid) where UNKNOWN means the source says
     nothing about a cell. Returns the class grid and the source of each cell's class.
+    The grids may be the 100 m grid or any finer one, as long as they are all the same.
     """
-    bottom = np.full(grid.SHAPE, UNKNOWN, dtype=np.uint8)
-    source = np.full(grid.SHAPE, NO_SOURCE, dtype=np.uint8)
+    shape = layers[0][1].shape if layers else grid.SHAPE
+    bottom = np.full(shape, UNKNOWN, dtype=np.uint8)
+    source = np.full(shape, NO_SOURCE, dtype=np.uint8)
     for code, classes in layers:
         take = (bottom == UNKNOWN) & (classes != UNKNOWN)
         bottom[take] = classes[take]

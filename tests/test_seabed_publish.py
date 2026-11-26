@@ -43,6 +43,33 @@ def test_files_are_gzip_of_little_endian_rows_and_the_same_every_time():
         publish.to_bytes(stored[:10])
 
 
+def test_a_predicted_grid_comes_back_exactly_and_packs_smaller():
+    shape = (40, 60)
+    rows, cols = np.mgrid[0 : shape[0], 0 : shape[1]]
+    slope = (200 + 3 * rows + 7 * cols).astype(np.uint16)  # a tilted seabed
+    slope[10:15, 20:30] = 0  # a gap
+    slope[0, 0], slope[0, 1], slope[1, 0] = 65535, 0, 65535  # the widest steps there are
+    data = publish.to_bytes_predicted(slope, shape)
+    assert data == publish.to_bytes_predicted(slope, shape)
+    assert (publish.from_bytes_predicted(data, shape) == slope).all()
+    assert len(data) < len(publish.to_bytes(slope, shape))
+    with pytest.raises(ValueError):
+        publish.to_bytes_predicted(slope.astype(np.uint8), shape)
+
+
+def test_contours_can_be_drawn_from_a_finer_grid():
+    fine_shape = grid.fine_shape(20)
+    rows, cols = np.mgrid[0 : fine_shape[0], 0 : fine_shape[1]]
+    ramp = cols * 20 / 1000.0  # one metre deeper every kilometre east
+    result = publish.contours(
+        ramp, (10,), to_lonlat=lambda e, n: (e, n), tolerance_m=5, sigma_cells=0
+    )
+    (line,) = result["features"]
+    eastings = np.array(line["geometry"]["coordinates"])[:, 0]
+    # Ten metres deep is ten kilometres east of the west edge, less half a 20 m cell.
+    assert eastings == pytest.approx(grid.WEST_E + 10_000 + 10, abs=1)
+
+
 def test_smoothing_keeps_gaps_as_gaps():
     values = np.full(grid.SHAPE, 10.0)
     values[5, 5] = np.nan

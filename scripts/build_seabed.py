@@ -10,7 +10,7 @@ Run by hand from the repo root, on a development machine:
 It downloads each source once into data/seabed/raw/ (not committed), then writes
 
     web/public/seabed/manifest.json    grid, scaling, legends, sources and licences
-    web/public/seabed/*.bin.gz         one byte grid per layer
+    web/public/seabed/*.bin.gz         one byte grid per layer, and the 20 m drawing grid
     web/public/seabed/contours.geojson depth contours
     docs/seabed-report.md              what went into this build, and how it checks out
 
@@ -30,10 +30,23 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from seabed import bottom, depth, grid, publish, report, sources  # noqa: E402
+from seabed import (  # noqa: E402
+    bottom,
+    depth,
+    distance,
+    drawing,
+    grid,
+    publish,
+    report,
+    sources,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 CONTOUR_LEVELS_M = (2, 5, 10, 20, 30, 40, 50, 75, 100)
+# A contour keeps the vertices that move it by more than this, and is dropped if it is
+# shorter than this: a ring that small is one bump or one patch of survey noise.
+CONTOUR_TOLERANCE_M = 5.0
+CONTOUR_MIN_LENGTH_M = 300.0
 
 # LiDAR is trusted to this depth below chart datum; anything deeper is dropped and the
 # next source is used. Airborne LiDAR loses the bottom gradually as the water deepens,
@@ -105,19 +118,21 @@ def load_inputs(raw: Path) -> Inputs:
 # --- Chart layers to grids ----------------------------------------------------------------
 
 
-def rasterize(shapes, fill, dtype, all_touched=False) -> np.ndarray:
-    """Burn (geometry, value) pairs onto the grid. By default a cell takes the polygon
-    its centre is in; all_touched marks every cell a shape reaches."""
+def rasterize(shapes, fill, dtype, all_touched=False, cell_m=grid.CELL_M) -> np.ndarray:
+    """Burn (geometry, value) pairs onto the grid, or onto a finer grid nested in it.
+    By default a cell takes the polygon its centre is in; all_touched marks every cell
+    a shape reaches."""
     from rasterio.features import rasterize as burn
     from rasterio.transform import from_origin
 
+    shape = grid.fine_shape(cell_m)
     shapes = [(geometry, value) for geometry, value in shapes if geometry]
     if not shapes:
-        return np.full(grid.SHAPE, fill, dtype=dtype)
+        return np.full(shape, fill, dtype=dtype)
     return burn(
         shapes,
-        out_shape=grid.SHAPE,
-        transform=from_origin(grid.WEST_E, grid.NORTH_N, grid.CELL_M, grid.CELL_M),
+        out_shape=shape,
+        transform=from_origin(grid.WEST_E, grid.NORTH_N, cell_m, cell_m),
         fill=fill,
         dtype=dtype,
         all_touched=all_touched,
@@ -173,7 +188,8 @@ class Chart:
     shallowest: np.ndarray  # charted depth band of each cell, NaN where none
     deepest: np.ndarray
     year: np.ndarray  # year the survey behind each cell finished, 0 = not recorded
-    rock: np.ndarray  # bottom class grids from the chart
+    rock: np.ndarray  # bottom class grids from the chart: rock areas and rock marks
+    rock_marks: np.ndarray  # the charted rocks that are marks at a point, alone
     samples: np.ndarray
 
 
@@ -189,6 +205,7 @@ def read_chart(bands: list[ChartBand]) -> Chart:
     deepest = np.full(grid.SHAPE, np.nan)
     year = np.zeros(grid.SHAPE, dtype=np.int32)
     rock = np.full(grid.SHAPE, bottom.UNKNOWN, dtype=np.uint8)
+    rock_marks = np.full(grid.SHAPE, bottom.UNKNOWN, dtype=np.uint8)
     samples = np.full(grid.SHAPE, bottom.UNKNOWN, dtype=np.uint8)
     points, soundings = [], []
 
@@ -253,6 +270,7 @@ def read_chart(bands: list[ChartBand]) -> Chart:
             rock_xy[:, 0], rock_xy[:, 1], np.full(len(rock_xy), bottom.ROCK)
         )
         rock = np.where((rock == bottom.UNKNOWN) & here, np.maximum(rock_here, rock_points), rock)
+        rock_marks = np.where((rock_marks == bottom.UNKNOWN) & here, rock_points, rock_marks)
         sample_xy, sample_class = [], []
         for feature in band.seabed_points:
             for xy in point_coordinates(feature["geometry"]):
@@ -275,8 +293,69 @@ def read_chart(bands: list[ChartBand]) -> Chart:
         deepest,
         year,
         rock,
+        rock_marks,
         samples,
     )
+
+
+@dataclass
+class FineChart:
+    """What the drawing grid takes straight from the chart, on cells of drawing.CELL_M."""
+
+    land: np.ndarray  # bool: charted land
+    covered: np.ndarray  # bool: the chart says something here
+    shallowest: np.ndarray  # charted depth band, NaN where none
+    deepest: np.ndarray
+    rock: np.ndarray  # bottom class: the seabed areas charted as rock
+
+
+def read_chart_fine(bands: list[ChartBand]) -> FineChart:
+    """The chart's coastline and depth bands at the scale the map is drawn at.
+
+    As in read_chart, the finest band that covers a spot decides.
+    """
+    cell_m = drawing.CELL_M
+    land = np.zeros(drawing.SHAPE, dtype=bool)
+    covered = np.zeros(drawing.SHAPE, dtype=bool)
+    shallowest = np.full(drawing.SHAPE, np.nan, dtype=np.float32)
+    deepest = np.full(drawing.SHAPE, np.nan, dtype=np.float32)
+    rock = np.full(drawing.SHAPE, bottom.UNKNOWN, dtype=np.uint8)
+    for band in bands:
+        band_land = rasterize(
+            [(f["geometry"], 1) for f in band.land], 0, "uint8", cell_m=cell_m
+        ).astype(bool)
+        band_rock = rasterize(
+            [
+                (f["geometry"], bottom.ROCK)
+                for f in band.seabed_polygons
+                if bottom.class_of_natsur(f["properties"].get("natsur")) == bottom.ROCK
+            ],
+            bottom.UNKNOWN,
+            "uint8",
+            all_touched=True,
+            cell_m=cell_m,
+        )
+        areas = [f for f in band.depth_areas if not np.isnan(number(f["properties"].get("drval1")))]
+        areas.sort(key=lambda f: -number(f["properties"]["drval1"]))
+        low = rasterize(
+            [(f["geometry"], number(f["properties"]["drval1"])) for f in areas],
+            np.nan,
+            "float32",
+            cell_m=cell_m,
+        )
+        high = rasterize(
+            [(f["geometry"], number(f["properties"].get("drval2"))) for f in areas],
+            np.nan,
+            "float32",
+            cell_m=cell_m,
+        )
+        here = (band_land | ~np.isnan(low)) & ~covered
+        land |= band_land & here
+        shallowest = np.where(here, low, shallowest)
+        deepest = np.where(here, high, deepest)
+        rock = np.where(here, band_rock, rock)
+        covered |= here
+    return FineChart(land, covered, shallowest, deepest, rock)
 
 
 def edge_cells(values: np.ndarray):
@@ -304,6 +383,13 @@ class Grids:
     roughness: np.ndarray
     bottom: np.ndarray
     bottom_source: np.ndarray
+    reef_distance: np.ndarray  # metres to the nearest reef cell
+    shore_distance: np.ndarray  # metres to the mainland shore
+    # The same merges on the 20 m grid, for drawing only (seabed/drawing.py).
+    drawing_depth: np.ndarray
+    drawing_source: np.ndarray
+    drawing_bottom: np.ndarray
+    drawing_bottom_source: np.ndarray
 
 
 def build(inputs: Inputs) -> tuple[Grids, dict]:
@@ -384,14 +470,11 @@ def build(inputs: Inputs) -> tuple[Grids, dict]:
         rough = np.where(mine, r, rough)
 
     # 7. Bottom type.
-    habitat = rasterize(
-        [
-            (f["geometry"], bottom.class_of_substrate(f["properties"].get("Substrate")))
-            for f in inputs.habitat
-        ],
-        bottom.UNKNOWN,
-        "uint8",
-    )
+    habitat_shapes = [
+        (f["geometry"], bottom.class_of_substrate(f["properties"].get("Substrate")))
+        for f in inputs.habitat
+    ]
+    habitat = rasterize(habitat_shapes, bottom.UNKNOWN, "uint8")
     kind, kind_source = bottom.merge(
         [
             (bottom.CHART_ROCK, chart.rock),
@@ -403,7 +486,46 @@ def build(inputs: Inputs) -> tuple[Grids, dict]:
     kind = np.where(sea, kind, bottom.UNKNOWN).astype(np.uint8)
     kind_source = np.where(sea, kind_source, bottom.NO_SOURCE).astype(np.uint8)
 
-    grids = Grids(merged, source, slope, rough, kind, kind_source)
+    # 8. The same merge on a 20 m grid, for the map to draw when zoomed in.
+    #    Charted water is the same surface through the same points, read at 20 m (or,
+    #    beyond the outermost point, the 100 m grid drawn smoothly), and held inside the
+    #    depth bands as the chart draws them at that scale.
+    fine_chart = read_chart_fine(inputs.bands)
+    charted_fine = depth.interpolate(e, n, z, at=drawing.centres())
+    charted_fine = np.where(np.isnan(charted_fine), drawing.between_centres(merged), charted_fine)
+    charted_fine = depth.clamp_to_depth_areas(
+        charted_fine, fine_chart.shallowest, fine_chart.deepest
+    )
+    drawn, drawn_source = drawing.surface(
+        lidar_fine,
+        multibeam_fine,
+        charted_fine,
+        source,
+        fine_chart.land,
+        fine_chart.covered,
+    )
+    drawn_kind, drawn_kind_source = drawing.bottom_type(
+        fine_chart.rock,
+        chart.rock_marks,
+        chart.samples,
+        rasterize(habitat_shapes, bottom.UNKNOWN, "uint8", cell_m=drawing.CELL_M),
+        drawn_source,
+    )
+
+    grids = Grids(
+        merged,
+        source,
+        slope,
+        rough,
+        kind,
+        kind_source,
+        distance.to_reef(kind, sea),
+        distance.to_mainland(sea),
+        drawn,
+        drawn_source,
+        drawn_kind,
+        drawn_kind_source,
+    )
     facts["final_check"] = report.compare(merged, chart.soundings, report.DEPTH_BANDS_M)
     facts["spot_checks"] = report.spot_checks(merged, source, chart.soundings, to_lonlat)
     facts["cells"] = report.cell_counts(grids)
@@ -456,7 +578,7 @@ def manifest(grids: Grids, facts: dict, contour_levels) -> dict:
         depth.BACKGROUND.key: SOURCE_NOTES["background"],
     }
     return {
-        "schema": 1,
+        "schema": 2,
         "built": dt.date.today().isoformat(),
         "grid": {
             "crs": grid.CRS,
@@ -527,6 +649,21 @@ def manifest(grids: Grids, facts: dict, contour_levels) -> dict:
                     {**cls, "cells": counts["bottom"].get(cls["key"], 0)} for cls in bottom.CLASSES
                 ],
             },
+            "reef_distance": publish.scaled_layer(
+                publish.REEF_DISTANCE,
+                file="reef_distance.bin.gz",
+                unit="m",
+                label="Distance to the nearest reef",
+                note="From the centre of the cell to the centre of the nearest cell of reef "
+                "or rock; 0 on reef. Stops at 6,350 m.",
+            ),
+            "shore_distance": publish.scaled_layer(
+                publish.SHORE_DISTANCE,
+                file="shore_distance.bin.gz",
+                unit="m",
+                label="Distance to the mainland shore",
+                note="To the nearest cell of land that is not an island. Stops at 12,700 m.",
+            ),
             "bottom_source": {
                 "file": "bottom_source.bin.gz",
                 "dtype": "uint8",
@@ -550,10 +687,33 @@ def manifest(grids: Grids, facts: dict, contour_levels) -> dict:
             {"code": code, **entry, "cells": counts["quality"].get(entry["key"], 0)}
             for code, entry in enumerate(depth.QUALITY)
         ],
+        # For drawing only: the same merge on a finer grid. Nothing is computed from it.
+        "drawing": {
+            "cell_m": drawing.CELL_M,
+            "ncols": drawing.SHAPE[1],
+            "nrows": drawing.SHAPE[0],
+            "note": "Depth: LiDAR and multibeam at 20 m where they exist; elsewhere the "
+            "surface through the charted soundings and contours, read at 20 m; lightly "
+            "smoothed. Bottom type: charted rock and the habitat map as their outlines run.",
+            "depth": {
+                **publish.scaled_layer(publish.DEPTH, file="drawing_depth.bin.gz", unit="m"),
+                "predictor": publish.PREDICTOR,
+            },
+            # A depth_source code, plus past_shore on the fringe carried onto the land
+            # for the map's own coastline to trim.
+            "source": {
+                "file": "drawing_source.bin.gz",
+                "dtype": "uint8",
+                "past_shore": drawing.PAST_SHORE,
+            },
+            # Codes as in layers.bottom and layers.bottom_source.
+            "bottom": {"file": "drawing_bottom.bin.gz", "dtype": "uint8"},
+            "bottom_source": {"file": "drawing_bottom_source.bin.gz", "dtype": "uint8"},
+        },
         "contours": {
             "file": "contours.geojson",
             "levels_m": list(contour_levels),
-            "note": "Drawn from the merged grid, lightly smoothed. Not for navigation.",
+            "note": "Drawn from the 20 m drawing grid. Not for navigation.",
         },
     }
 
@@ -580,15 +740,37 @@ def write(grids: Grids, facts: dict, out: Path, report_path: Path) -> None:
         "roughness.bin.gz": publish.encode(grids.roughness, publish.ROUGHNESS),
         "bottom.bin.gz": grids.bottom,
         "bottom_source.bin.gz": grids.bottom_source,
+        "reef_distance.bin.gz": publish.encode(grids.reef_distance, publish.REEF_DISTANCE),
+        "shore_distance.bin.gz": publish.encode(grids.shore_distance, publish.SHORE_DISTANCE),
     }
     for name, stored in files.items():
         (out / name).write_bytes(publish.to_bytes(stored))
-    lines = publish.contours(grids.depth, CONTOUR_LEVELS_M, to_lonlat)
+    (out / "drawing_depth.bin.gz").write_bytes(
+        publish.to_bytes_predicted(
+            publish.encode(grids.drawing_depth, publish.DEPTH), drawing.SHAPE
+        )
+    )
+    for name, stored in (
+        ("drawing_source.bin.gz", grids.drawing_source),
+        ("drawing_bottom.bin.gz", grids.drawing_bottom),
+        ("drawing_bottom_source.bin.gz", grids.drawing_bottom_source),
+    ):
+        (out / name).write_bytes(publish.to_bytes(stored, drawing.SHAPE))
+    # The lines are drawn from the surface the map paints, so they sit on its colour steps.
+    in_water = (grids.drawing_source != 0) & (grids.drawing_source < drawing.PAST_SHORE)
+    lines = publish.contours(
+        np.where(in_water, grids.drawing_depth, np.nan),
+        CONTOUR_LEVELS_M,
+        to_lonlat,
+        tolerance_m=CONTOUR_TOLERANCE_M,
+        min_length_m=CONTOUR_MIN_LENGTH_M,
+        sigma_cells=0,
+    )
     (out / "contours.geojson").write_text(json.dumps(lines, separators=(",", ":")) + "\n")
     publish.write_json(out / "manifest.json", manifest(grids, facts, CONTOUR_LEVELS_M))
     report_path.write_text(report.markdown(facts, LIDAR_MAX_DEPTH_M))
     size = sum(path.stat().st_size for path in out.iterdir())
-    print(f"wrote {len(files) + 2} files to {out} ({size / 1024:.0f} kB) and {report_path}")
+    print(f"wrote {len(files) + 6} files to {out} ({size / 1024:.0f} kB) and {report_path}")
 
 
 def main() -> int:
