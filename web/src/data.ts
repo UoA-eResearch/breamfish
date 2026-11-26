@@ -1,5 +1,6 @@
-// Shapes of the two files the pipeline publishes under /data/.
-// The Python side (src/breamfish/publish.py) is the source of truth.
+// Shapes of the two files the pipeline publishes under /data/, and of the seabed
+// manifest. The Python side (src/breamfish/publish.py, scripts/build_seabed.py) is
+// the source of truth.
 
 export type Style = "boat" | "kayak" | "shore";
 export type Series = (number | null)[];
@@ -74,6 +75,61 @@ export interface Status {
   generated_at: string;
   ok: boolean;
   sources: SourceStatus[];
+}
+
+// --- Seabed grids ---------------------------------------------------------------
+// /seabed/manifest.json, written by scripts/build_seabed.py. The grids it describes
+// are read in seabed.ts.
+
+export interface SeabedClass {
+  code: number;
+  key: string;
+  label: string;
+  /** Index into the manifest's quality list (depth sources only). */
+  quality?: number;
+  cells?: number;
+  name?: string;
+  url?: string;
+  licence?: string;
+}
+
+/** value = offset + scale * stored; stored 0 means nothing here. */
+export interface ScaledLayer {
+  file: string;
+  dtype: "uint8" | "uint16";
+  scale: number;
+  offset: number;
+  unit: string;
+  label: string;
+  note?: string;
+}
+
+export interface ClassLayer {
+  file: string;
+  dtype: "uint8";
+  label: string;
+  classes: SeabedClass[];
+}
+
+export interface SeabedManifest {
+  schema: number;
+  built: string;
+  grid: { crs: string; cell_m: number; west_e: number; north_n: number; ncols: number; nrows: number };
+  /** West, south, east, north in degrees: the box the grid fits in. */
+  bounds: [number, number, number, number];
+  /** [longitude, latitude, easting, northing] worked out by PROJ. */
+  projection_check: [number, number, number, number][];
+  datum: { name: string; note: string };
+  layers: {
+    depth: ScaledLayer;
+    depth_source: ClassLayer;
+    slope: ScaledLayer;
+    roughness: ScaledLayer;
+    bottom: ClassLayer;
+    bottom_source: ClassLayer;
+  };
+  quality: { code: number; key: string; label: string; detail?: string; cells: number }[];
+  contours: { file: string; levels_m: number[]; note: string };
 }
 
 export async function loadJson<T>(path: string): Promise<T> {

@@ -20,18 +20,51 @@ Things to know about these:
 - **Tide times are local.** The LINZ CSV header says "Local Std or Daylight Time". The pipeline converts to UTC; a slip here is a one-hour error for half the year.
 - **The tide curve is interpolated** between predicted highs and lows with a cosine. Good to a few centimetres mid-tide, not a harmonic prediction.
 
+## In use (stage 1, the seabed layers)
+
+These are fetched once by `scripts/build_seabed.py` on a development machine, not by the server. The grids built from them are committed under `web/public/seabed/`. Method and datum handling are in [seabed.md](seabed.md); the numbers for the committed build are in [seabed-report.md](seabed-report.md). All were fetched on 26 November 2026.
+
+| Source | Used for | Access | Licence and attribution |
+|---|---|---|---|
+| [LINZ coastal LiDAR](https://registry.opendata.aws/nz-coastal/), "Whangārei to Bream Bay" and "Mangawhai to Snells", flown March 2025 | Depth, slope and roughness near the coast: 27% of the sea in the box | Public bucket, no key: `nz-coastal.s3.ap-southeast-2.amazonaws.com/<region>/<survey>/dem_10m/2193/<tile>.tiff`. Tiles AX30, AX31, AY31 of the first survey and AY31, AY32 of the second. Cloud-optimised GeoTIFF in NZTM. | CC BY 4.0, Toitū Te Whenua Land Information New Zealand |
+| [LINZ Shipping Lane 1 Multibeam 20m Depth Model (1999)](https://data.linz.govt.nz/layer/116628), surveys HS6 and HS15, 1999 to 2004 | Depth, slope and roughness across the middle of the bay: 39% of the sea | LINZ Data Service Exports API (`/services/api/v1.x/exports/`), layer 116628, cropped to the box, in its own UTM zone 60S. Needs a key that may create exports. | CC BY 4.0, Toitū Te Whenua Land Information New Zealand |
+| [LINZ nautical chart data](https://data.linz.govt.nz/layer/50866), three scale bands | Depth elsewhere (34% of the sea), the land mask outside the LiDAR, survey dates, charted rock and seabed samples | LINZ Data Service WFS, `data.linz.govt.nz/services/wfs`, key sent in an `Authorization: key ...` header. Layer numbers below. | CC BY 4.0, Toitū Te Whenua Land Information New Zealand. Not to be used for navigation. |
+| DOC Northland habitat map: Kerr, V.C. 2010, [Marine Habitat Map of Northland: Mangawhai to Ahipara](https://www.doc.govt.nz/documents/conservation/marine-and-coastal/northland-marine-habitat-map-report-1.pdf), version 1 | Bottom type where the chart says nothing | `seasketch.doc.govt.nz/arcgis/rest/services/National/NZMPASAG_Habitats_Northland_2009_201810/MapServer/0`, no key | **Licence not stated on the service.** Attributed to the Department of Conservation and the report's author. Worth confirming with DOC. |
+| GEBCO 2020 | Background depth for water no chart covers. In this box that is no cells at all. | `api.opentopodata.org/v1/gebco2020`, no key, 100 points a call, one call a second | Public domain; GEBCO Compilation Group (2020) |
+
+Chart layer numbers, by scale band (1:4k to 1:22k, 1:22k to 1:90k, 1:90k to 1:350k):
+
+| Layer | Finest | Middle | Coarsest |
+|---|---|---|---|
+| Sounding points | 50858 | 50866 | 50506 |
+| Depth contours | 50672 | 50554 | 50448 |
+| Depth areas | 50671 | 50553 | 50447 |
+| Land areas | 50691 | 50569 | 50461 |
+| Quality of data (survey dates, zone of confidence) | 50707 | 50584 | 50476 |
+| Seabed area polygons | 50734 | 50603 | 50496 |
+| Seabed area points (samples) | 50733 | 50602 | 50495 |
+| Underwater and awash rocks | 50755 | 50626 | 50513 |
+
+Things to know about these:
+
+- **Vertical datums differ and are reconciled in the build.** LiDAR is on NZVD2016; charts and the multibeam model are on chart datum; GEBCO is on mean sea level. Chart datum at Marsden Point is 1.746 m below NZVD2016. The derivation and its check are in [seabed.md](seabed.md).
+- **The LiDAR goes deep.** It covers about 276 km² of sea in the box and reaches 40 m below chart datum, far beyond the shallow strip the first probe reported. It agrees with charted soundings to about half a metre at every depth that could be checked.
+- **Only the 20 m multibeam model can be downloaded.** The index (layer 122710) also lists a 10 m surface for HS15, but the surfaces in that index are supplied on request by email to `hydro@linz.govt.nz`, not through the data service.
+- **How old the depths are.** After the LiDAR and multibeam, about 26% of the sea rests on chart surveys since 1990 (nearly all a 2010 survey around the Hen and Chickens) and about 8% on surveys of 1955 to 1962. The earlier note that most of Bream Bay rests on 1962 surveys described the chart alone; the 2025 LiDAR and the multibeam model now cover most of that water.
+- **The habitat map does not tell sand from mud over most of the bay.** About 77,000 of the 103,000 sea cells are "soft sediments" in it. The site shows that as its own class.
+- **The `verdat` (vertical datum) attribute on chart features is empty.** The datum comes from LINZ's description of its charts, not from the data.
+- **The LINZ key** is a 32-character API key made under your profile at data.linz.govt.nz. It needs query access for WFS and the `exports:write` scope for the multibeam export.
+
 ## Verified for later stages
 
 ### Seabed and depth
 
 | Source | What it gives | Access | Status |
 |---|---|---|---|
-| LINZ coastal LiDAR, "Whangārei to Bream Bay 2025" | Land and shallow seabed heights on 1, 2 and 10 m grids, captured March 2025 | Public bucket, no key: `nz-coastal.s3.ap-southeast-2.amazonaws.com/northland/whangarei-to-bream-bay_2025/dem_{1m,2m,10m}/2193/collection.json`, cloud-optimised GeoTIFF in NZTM | probed. Only the shallow strip has data. Values to -40 m were seen, deeper than this kind of survey usually reaches, so treat the deep end as suspect. Vertical datum not yet confirmed. CC BY 4.0. |
-| LINZ multibeam surfaces | HS15 "Shipping Lane 1, inshore" on a 10 m grid (2000 to 2014) and HS6 offshore on 20 m | LINZ Data Service, index layer 122710; needs the LINZ key | probed (index). Vertical datum is lowest astronomical tide. |
-| LINZ chart layers | Depth areas 50553, soundings 50866, contours 50554, seabed type polygons 50603 and points 50602, wrecks 50633, obstructions 50586/50587, rocks 50626, cables 50546, restricted areas 50598 (finer scale band: 50671, 50858, 50672) | `data.linz.govt.nz/services;key=KEY/wfs`; needs the LINZ key | probed. 47 rock polygons and 56 seabed samples (sand, shell, mud, rock) in the box. CC BY 4.0. |
-| LINZ survey index | Which survey each depth comes from | Layer 53388 | probed. Most of Bream Bay rests on Navy surveys from 1962; the Hen and Chickens on a 2010 echo-sounder survey at 125 m line spacing. |
-| DOC Northland habitat map (Kerr 2009) | Reef, sand and fine-sediment polygons with depth class | `seasketch.doc.govt.nz/arcgis/rest/services/National/NZMPASAG_Habitats_Northland_2009_201810/MapServer/0` | probed. Coarse mapping scale; licence not stated. |
-| GEBCO | Global depth, about 450 m | via `api.opentopodata.org/v1/gebco2020` | probed. Fallback only. |
+| LINZ coastal LiDAR, 1 m and 2 m grids | The same surveys as above at finer resolution | Same bucket, `dem_1m` and `dem_2m` | probed. Not needed at 100 m cells. CC BY 4.0. |
+| LINZ multibeam surface, HS15 at 10 m | A finer surface for the inshore part of the shipping lane | By email request to LINZ, quoting the id from index layer 122710 | read. Not requested. |
+| LINZ chart layers not used yet | Wrecks 50633, obstructions 50586/50587, cables 50546, restricted areas 50598 | LINZ Data Service WFS; needs the key | probed. CC BY 4.0. |
+| LINZ survey index | Which survey each depth comes from | Layer 53388 | probed. The chart's own "quality of data" layers carry the same dates and were used instead. |
 | NIWA 250 m bathymetry | National depth grid | NIWA download and image service | failed (HTTP 403 and 500). |
 
 ### Ocean

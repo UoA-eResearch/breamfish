@@ -5,7 +5,7 @@ Each stage ends with something live on the site.
 | Stage | What goes live | Main data |
 |---|---|---|
 | **0 Skeleton** (live since 26 November 2026) | HTTPS site, map, no-take reserve, boat ramps, seven-day conditions with a comfort rating for boat, kayak and shore | Open-Meteo, LINZ tides, DOC reserves, OpenStreetMap |
-| 1 Seabed | Merged depth surface with a depth-quality overlay, contours, slope and roughness, reef, sand and mud; tap a spot for depth and bottom type | LINZ LiDAR, multibeam and chart layers, DOC habitat map |
+| **1 Seabed** (live since 26 November 2026) | Merged depth surface with a depth-quality overlay, contours, slope and roughness, reef, sand and mud; tap a spot for depth and bottom type | LINZ LiDAR, multibeam and chart layers, DOC habitat map |
 | 2 Snapper habitat | Static and seasonal snapper index, reach for each fishing style, a methods page, first validation numbers | Stage 1 grids, the 2023 fish atlas, OBIS and iNaturalist points |
 | 3 Dynamic index | Hourly seven-day frames, time slider, a "why this score" panel, best-window summary, offline caching | Satellite sea temperature, tide stage and range, Ruakaka river flow |
 | 4 Evidence loop | A "how good is this?" page, bottom temperature from fishing-gear sensors, a templated daily briefing, a rules watcher, an optional catch log | Mangōpare sensors |
@@ -31,7 +31,8 @@ A catch log comes later, to start building the local dataset that would let the 
 ## Design decisions already made
 
 - **Grid:** NZTM (EPSG:2193) at 100 m, about 380 by 380 cells. Slope and roughness are computed at 10 m where LiDAR or multibeam exists, then summarised to the cell.
-- **Depth merge:** LiDAR where valid, multibeam on the approaches, chart soundings elsewhere, a global grid as background, with a `depth_source` layer so the site can show how good the depth is at each spot. LiDAR is on a land datum and charts on chart datum; they must be reconciled with the Marsden Point offset before merging.
+- **Depth merge:** LiDAR where valid, multibeam across the middle of the bay, chart soundings elsewhere, a global grid as background, with a `depth_source` layer so the site can show how good the depth is at each spot. Depths are metres below chart datum at Marsden Point, which is 1.746 m below the LiDAR's datum, NZVD2016. Built in stage 1; see [seabed.md](seabed.md).
+- **Bottom type** keeps "soft sediment, sand or mud not told apart" as a class of its own, because that is all the habitat map says for most of the open bay. Stage 2 response curves must treat it as such and not as sand.
 - **Delivery:** static files only. Compressed byte grids for static factors, then the index and its factor contributions per hour, painted in the browser as one image. No tile server, no API. The formula lives in Python.
 - **Shore fishing** is scored per stretch of accessible shoreline, not per grid cell.
 - **Left out on purpose:** solunar tables, moon phase (spring and neap range is kept, through the tide), barometric pressure.
