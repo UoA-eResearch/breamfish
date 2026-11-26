@@ -52,6 +52,7 @@ jobs:
         run: |
           mkdir -p release/web
           cp -R src pyproject.toml LICENSE release/
+          find release -name __pycache__ -prune -exec rm -rf {} +
           cp -R web/dist release/web/dist
           uv export --frozen --no-dev --no-emit-project --format requirements-txt \
             --output-file release/requirements.txt
