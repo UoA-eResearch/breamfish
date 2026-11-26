@@ -239,18 +239,19 @@ def thin(easting, northing, value, spacing_m: float = 50.0):
     return mean(easting), mean(northing), mean(value)
 
 
-def interpolate(easting, northing, value) -> np.ndarray:
-    """Depth at every cell centre, linearly between the given points (a triangulated surface).
+def interpolate(easting, northing, value, at=None) -> np.ndarray:
+    """Depth linearly between the given points (a triangulated surface).
 
+    Evaluated at every cell centre, or at the (easting, northing) arrays given as `at`.
     NaN outside the hull of the points, and everywhere if there are fewer than three.
     """
     from scipy.interpolate import LinearNDInterpolator
 
+    at_e, at_n = grid.centres() if at is None else at
     if len(value) < 3:
-        return np.full(grid.SHAPE, np.nan)
+        return np.full(np.shape(at_e), np.nan)
     surface = LinearNDInterpolator(np.column_stack([easting, northing]), value)
-    cell_e, cell_n = grid.centres()
-    return surface(cell_e, cell_n)
+    return surface(at_e, at_n)
 
 
 def honour_soundings(surface: np.ndarray, soundings: np.ndarray) -> np.ndarray:

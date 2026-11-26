@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 import build_seabed
-from seabed import bottom, depth, grid, publish
+from seabed import bottom, depth, drawing, grid, publish
 
 
 def box(col0, row0, col1, row1):
@@ -145,6 +145,64 @@ def test_bottom_type_takes_the_most_specific_source(built):
     )
 
 
+def fine(row, col):
+    """The 20 m cell in the middle of a 100 m cell."""
+    return row * drawing.FACTOR + 2, col * drawing.FACTOR + 2
+
+
+def test_the_drawing_grid_shows_each_survey_where_it_has_water(built):
+    grids, _ = built
+    assert grids.drawing_depth.shape == grids.drawing_source.shape == drawing.SHAPE
+    assert grids.drawing_source[fine(50, 50)] == depth.LIDAR.code
+    assert grids.drawing_depth[fine(50, 50)] == pytest.approx(5.0, abs=1e-3)
+    assert grids.drawing_source[fine(50, 120)] == depth.MULTIBEAM.code
+    assert grids.drawing_depth[fine(50, 120)] == pytest.approx(30.0, abs=1e-3)
+    # Too deep for the LiDAR here as well, so the multibeam shows through.
+    assert grids.drawing_source[fine(5, 95)] == depth.MULTIBEAM.code
+
+
+def test_the_drawing_grid_draws_charted_water_inside_its_depth_band(built):
+    grids, _ = built
+    assert grids.drawing_source[fine(150, 100)] == depth.CHART_OLD.code
+    assert grids.drawing_source[fine(150, 280)] == depth.CHART_RECENT.code
+    # Well inside the charted water, away from the surveys and the island.
+    patch = grids.drawing_depth[120 * 5 : 180 * 5, 160 * 5 : 240 * 5]
+    assert patch.min() >= 10 and patch.max() <= 20
+    # Beyond the outermost sounding (row 198) the chart's depth band still holds. The
+    # 48 m of the global grid starts at row 200, and without the band this would be 40.
+    assert grids.drawing_depth[199 * 5, 150 * 5] == pytest.approx(20, abs=0.05)
+
+
+def test_the_drawing_grid_runs_a_little_past_the_shore_and_says_so(built):
+    grids, _ = built
+    row = fine(50, 0)[0]
+    shore = 10 * drawing.FACTOR  # the LiDAR's dune ends here
+    assert grids.drawing_source[row, shore] == depth.LIDAR.code
+    fringe = grids.drawing_source[row, shore - int(drawing.BLEED_CELLS) : shore]
+    assert (fringe == depth.LIDAR.code + drawing.PAST_SHORE).all()
+    assert grids.drawing_depth[row, shore - 1] == pytest.approx(5.0, abs=1e-3)
+    assert grids.drawing_source[row, shore - int(drawing.BLEED_CELLS) - 1] == 0
+    assert np.isnan(grids.drawing_depth[row, 0])
+    # The charted island: land in the middle, a fringe at its edge.
+    assert grids.drawing_source[fine(100, 255)] == 0
+    assert grids.drawing_source[fine(100, 250)] == depth.CHART_RECENT.code + drawing.PAST_SHORE
+
+
+def test_the_drawing_grid_keeps_outlines_and_draws_point_notes_as_dots(built):
+    grids, _ = built
+    # The rock area is two cells square on the chart, and that is what is drawn.
+    rock = grids.drawing_bottom == bottom.ROCK
+    area = rock[150 * 5 : 152 * 5, 100 * 5 : 102 * 5]
+    assert area.all()
+    assert (grids.drawing_bottom_source[150 * 5 : 152 * 5, 100 * 5 : 102 * 5] == 1).all()
+    # A charted rock is a mark at a point: the middle of its cell, not the corners.
+    assert grids.drawing_bottom[fine(150, 220)] == bottom.ROCK
+    assert grids.drawing_bottom[150 * 5, 220 * 5] == bottom.SOFT
+    assert grids.drawing_bottom_source[150 * 5, 220 * 5] == bottom.HABITAT_MAP
+    # Nothing is classed on land.
+    assert grids.drawing_bottom[fine(100, 255)] == bottom.UNKNOWN
+
+
 def test_the_checks_against_soundings_are_reported(built):
     _, facts = built
     lidar = facts["lidar_check"]
@@ -169,7 +227,7 @@ def test_written_files_match_what_the_manifest_says(built, tmp_path):
     out = tmp_path / "seabed"
     build_seabed.write(grids, facts, out, tmp_path / "report.md")
     manifest = json.loads((out / "manifest.json").read_text())
-    assert manifest["schema"] == 1
+    assert manifest["schema"] == 2
     assert (manifest["grid"]["ncols"], manifest["grid"]["nrows"]) == (grid.NCOLS, grid.NROWS)
     west, south, east, north = manifest["bounds"]
     assert (
@@ -191,6 +249,19 @@ def test_written_files_match_what_the_manifest_says(built, tmp_path):
     assert codes[depth.LIDAR.code]["cells"] == facts["cells"]["source"]["lidar"]
     assert all(c["licence"] and c["url"] for c in codes.values())
     assert manifest["quality"][codes[depth.CHART_OLD.code]["quality"]]["key"] == "old"
+
+    drawn = manifest["drawing"]
+    shape = (drawn["nrows"], drawn["ncols"])
+    assert shape == drawing.SHAPE and drawn["cell_m"] == drawing.CELL_M
+    assert drawn["depth"]["predictor"] == "plane"
+    stored = publish.from_bytes_predicted((out / drawn["depth"]["file"]).read_bytes(), shape)
+    row, col = fine(50, 50)
+    assert drawn["depth"]["offset"] + drawn["depth"]["scale"] * stored[row, col] == pytest.approx(5)
+    assert stored[fine(50, 5)] == 0
+    for name in ("source", "bottom", "bottom_source"):
+        cells = publish.from_bytes((out / drawn[name]["file"]).read_bytes(), "uint8", shape)
+        assert cells.shape == shape, name
+    assert drawn["source"]["past_shore"] == drawing.PAST_SHORE
 
     contours = json.loads((out / manifest["contours"]["file"]).read_text())
     assert {f["properties"]["depth"] for f in contours["features"]} <= set(

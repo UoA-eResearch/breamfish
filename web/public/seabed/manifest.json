@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "built": "2026-11-26",
  "grid": {
   "crs": "EPSG:2193",
@@ -198,6 +198,24 @@
     }
    ]
   },
+  "reef_distance": {
+   "dtype": "uint8",
+   "scale": 25.0,
+   "offset": -25.0,
+   "file": "reef_distance.bin.gz",
+   "unit": "m",
+   "label": "Distance to the nearest reef",
+   "note": "From the centre of the cell to the centre of the nearest cell of reef or rock; 0 on reef. Stops at 6,350 m."
+  },
+  "shore_distance": {
+   "dtype": "uint8",
+   "scale": 50.0,
+   "offset": -50.0,
+   "file": "shore_distance.bin.gz",
+   "unit": "m",
+   "label": "Distance to the mainland shore",
+   "note": "To the nearest cell of land that is not an island. Stops at 12,700 m."
+  },
   "bottom_source": {
    "file": "bottom_source.bin.gz",
    "dtype": "uint8",
@@ -271,6 +289,33 @@
    "cells": 0
   }
  ],
+ "drawing": {
+  "cell_m": 20,
+  "ncols": 1930,
+  "nrows": 1920,
+  "note": "Depth: LiDAR and multibeam at 20 m where they exist; elsewhere the surface through the charted soundings and contours, read at 20 m; lightly smoothed. Bottom type: charted rock and the habitat map as their outlines run.",
+  "depth": {
+   "dtype": "uint16",
+   "scale": 0.1,
+   "offset": -10.0,
+   "file": "drawing_depth.bin.gz",
+   "unit": "m",
+   "predictor": "plane"
+  },
+  "source": {
+   "file": "drawing_source.bin.gz",
+   "dtype": "uint8",
+   "past_shore": 128
+  },
+  "bottom": {
+   "file": "drawing_bottom.bin.gz",
+   "dtype": "uint8"
+  },
+  "bottom_source": {
+   "file": "drawing_bottom_source.bin.gz",
+   "dtype": "uint8"
+  }
+ },
  "contours": {
   "file": "contours.geojson",
   "levels_m": [
@@ -284,6 +329,6 @@
    75,
    100
   ],
-  "note": "Drawn from the merged grid, lightly smoothed. Not for navigation."
+  "note": "Drawn from the 20 m drawing grid. Not for navigation."
  }
 }
