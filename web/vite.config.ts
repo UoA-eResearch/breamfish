@@ -27,8 +27,19 @@ function serveLocalData(): Plugin {
   };
 }
 
+// The same policy nginx sends in production (the Puppet template
+// breamfish_ssl.conf.epp). `npm run preview` applies it too, so a change that
+// would be blocked on the live site is blocked here first. Keep the two in step.
+const contentSecurityPolicy =
+  "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; " +
+  "worker-src 'self' blob:; child-src blob:; connect-src 'self'; object-src 'none'; " +
+  "base-uri 'self'; frame-ancestors 'none'";
+
 export default defineConfig({
   plugins: [serveLocalData()],
+  preview: {
+    headers: { "Content-Security-Policy": contentSecurityPolicy },
+  },
   build: {
     outDir: "dist",
     // MapLibre is one large dependency; the default 500 kB warning is noise here.
