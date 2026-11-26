@@ -1,8 +1,9 @@
 import "./style.css";
 import { drawCharts, type ChartSet } from "./charts";
 import { comfortClass, comfortSentence, compass, STYLES } from "./comfort";
-import { loadJson, type Conditions, type Status, type Style, type Zone } from "./data";
+import { loadJson, type Conditions, type SeabedManifest, type Status, type Style, type Zone } from "./data";
 import { BayMap } from "./map";
+import { store, stored } from "./storage";
 import { ago, buildDays, fmtDay, fmtHour, fmtTime, isDaylight, localParts, type Day } from "./time";
 
 const REFRESH_MS = 10 * 60_000;
@@ -12,21 +13,6 @@ const WIDE = window.matchMedia("(min-width: 860px)");
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const esc = (text: string): string =>
   text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-
-function stored(key: string): string | null {
-  try {
-    return localStorage.getItem(`breamfish.${key}`);
-  } catch {
-    return null;
-  }
-}
-function store(key: string, value: string): void {
-  try {
-    localStorage.setItem(`breamfish.${key}`, value);
-  } catch {
-    // Private windows may refuse storage; the choice just won't be remembered.
-  }
-}
 
 interface Model {
   conditions: Conditions;
@@ -49,7 +35,7 @@ let model: Model | null = null;
 let charts: ChartSet | null = null;
 
 const panel = $("panel");
-const bayMap = new BayMap($("map"), (id) => selectZone(id));
+const bayMap = new BayMap($("map"), (id) => selectZone(id), renderSeabedSources);
 
 // ---------------------------------------------------------------- helpers
 
@@ -266,6 +252,20 @@ function renderThresholds(): void {
       <thead><tr><th scope="col"></th><th scope="col">Good, up to</th><th scope="col">Fair, up to</th></tr></thead>
       <tbody>${STYLES.map(row).join("")}</tbody>
     </table>`;
+}
+
+/** The About panel's list of depth sources, with how much of the water each one covers. */
+function renderSeabedSources(manifest: SeabedManifest): void {
+  const sources = manifest.layers.depth_source.classes.filter((c) => (c.cells ?? 0) > 0);
+  const sea = sources.reduce((sum, c) => sum + (c.cells ?? 0), 0);
+  $("seabed-sources").innerHTML = sources
+    .map((c) => {
+      const share = (100 * (c.cells ?? 0)) / sea;
+      const quality = manifest.quality[c.quality ?? 0];
+      return `<li><strong>${esc(c.label)}</strong>, ${share < 1 ? "under 1" : share.toFixed(0)}% of the water.
+        ${esc(quality.label)}: ${esc((quality.detail ?? "").replace(/\.$/, ""))}.</li>`;
+    })
+    .join("");
 }
 
 function renderAll(): void {

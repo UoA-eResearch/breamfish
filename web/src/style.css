@@ -27,6 +27,32 @@
   --poor: #d03b3b;
   --none: #c3c2b7;
 
+  /* Seabed layers. Depth is one hue, light to dark with depth, the way charts
+     draw it, and stays the same in both themes. The class colours are the first
+     three of the palette, which stay apart for colour-blind readers when any
+     two can sit side by side on a map, plus greys; they have dark-theme steps
+     below. Every class is also named in the key and in the tap popup. */
+  --depth-0: #e1e0d9;
+  --depth-1: #cde2fb;
+  --depth-2: #9ec5f4;
+  --depth-3: #6da7ec;
+  --depth-4: #3987e5;
+  --depth-5: #256abf;
+  --depth-6: #184f95;
+  --depth-7: #0d366b;
+  --contour: #0d366b;
+
+  --quality-measured: #2a78d6;
+  --quality-charted: #1baf7a;
+  --quality-old: #eb6834;
+  --quality-background: #898781;
+
+  --bottom-rock: #eb6834;
+  --bottom-sand: #1baf7a;
+  --bottom-mud: #2a78d6;
+  --bottom-coarse: #52514e;
+  --bottom-soft: #c3c2b7;
+
   --sheet-h: 0px;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 15px;
@@ -53,6 +79,16 @@
     --rain: #9085e9;
     --tide: #c3c2b7;
     --none: #4a4a46;
+
+    --contour: #cde2fb;
+    --quality-measured: #3987e5;
+    --quality-charted: #199e70;
+    --quality-old: #d95926;
+    --bottom-rock: #d95926;
+    --bottom-sand: #199e70;
+    --bottom-mud: #3987e5;
+    --bottom-coarse: #f0efec;
+    --bottom-soft: #898781;
   }
 }
 
@@ -101,7 +137,8 @@ a {
 }
 
 /* #map prefix: these must outrank MapLibre's own stylesheet, which loads later. */
-#map .maplibregl-ctrl-top-left {
+#map .maplibregl-ctrl-top-left,
+#map .maplibregl-ctrl-top-right {
   top: 60px;
 }
 
@@ -122,6 +159,122 @@ a {
 
 #map .maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
   border-top-color: var(--surface);
+}
+
+/* The seabed layer picker: a map control under the zoom buttons. */
+#map .layers {
+  clear: both;
+  max-width: 230px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+}
+
+.layers summary {
+  padding: 7px 10px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.layers fieldset {
+  margin: 0;
+  padding: 0 10px;
+  border: 0;
+}
+
+.layers label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.layers input {
+  margin: 0;
+  accent-color: var(--brand);
+}
+
+.layers-contours {
+  margin: 4px 10px 0;
+  padding-top: 6px !important;
+  border-top: 1px solid var(--grid);
+}
+
+.layers-key {
+  display: grid;
+  gap: 3px;
+  margin: 8px 10px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.layers-key li {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 6px;
+  align-items: start;
+}
+
+.layers-key i {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.layers-note {
+  margin: 8px 10px 9px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* What a tap on the water shows. */
+.spot p,
+.spot-rule {
+  margin: 0;
+}
+
+.spot-rule {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.spot-depth {
+  font-size: 15px;
+}
+
+.spot dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  margin: 8px 0;
+}
+
+.spot dt {
+  color: var(--ink-2);
+}
+
+.spot dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.spot small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.spot-note {
+  font-size: 12px;
+  color: var(--ink-2);
 }
 
 .zone-marker {

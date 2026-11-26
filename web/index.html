@@ -35,8 +35,8 @@
       <section id="readout" class="readout" aria-live="polite"></section>
 
       <p class="note">
-        This first version rates the <strong>conditions</strong> only. A map of where snapper are likely to be is
-        being built and is not live yet.
+        The ratings are for the <strong>conditions</strong> only. Tap the water on the map for depth and bottom
+        type. A map of where snapper are likely to be is being built and is not live yet.
       </p>
 
       <section class="week" aria-labelledby="week-title">
@@ -83,8 +83,12 @@
         waves, rain and tide for the next seven days and rates each hour for boat, kayak and shore fishing.
       </p>
       <p>
-        It does <strong>not</strong> yet say where the fish are. A habitat map for snapper, built from seabed and
-        water-temperature data, is the next stage. Fine-scale catch records for this bay are not published by
+        The map also shows the seabed: depth, how far that depth can be trusted, and what the bottom is made of.
+        Tap the water to read them for a spot.
+      </p>
+      <p>
+        It does <strong>not</strong> yet say where the fish are. A habitat map for snapper, built from this seabed
+        map and water-temperature data, is the next stage. Fine-scale catch records for this bay are not published by
         anyone, so that map will be a habitat index and will say how well it tests against what records exist.
       </p>
 
@@ -101,6 +105,20 @@
         <li>For shore fishing, a strong wind blowing onto the shore lowers it one step.</li>
         <li>At the harbour entrance, wind or waves running against a strong outgoing tide lower it one step.</li>
       </ul>
+
+      <h3>The seabed map</h3>
+      <p>
+        Depths are in metres below chart datum at Marsden Point, which is close to the lowest tide. Add the tide
+        height to get the depth at any moment. The map joins several sources, best first, and
+        <em>How sure the depth is</em> shows which one each spot rests on:
+      </p>
+      <ul id="seabed-sources"></ul>
+      <p>
+        Slope and roughness are shown only where a survey measured the seabed closely enough. Bottom type comes
+        from seabed notes and rock on the charts and from a coastal habitat map drawn at a coarse scale; over most
+        of the open bay that map says only "soft sediment", without telling sand from mud. All of it is on a grid
+        of 100 m squares, so a small reef or hole can be missed.
+      </p>
 
       <h3>Limits you should know</h3>
       <ul>
@@ -157,6 +175,32 @@
             >Toitū Te Whenua LINZ tide predictions</a
           >
           for Marsden Point (CC BY 4.0).
+        </li>
+        <li>
+          Depth near the coast:
+          <a href="https://registry.opendata.aws/nz-coastal/" target="_blank" rel="noopener">LINZ coastal LiDAR</a>,
+          Whangārei to Bream Bay and Mangawhai to Snells, flown in March 2025 (CC BY 4.0, Toitū Te Whenua LINZ).
+        </li>
+        <li>
+          Depth across the middle of the bay:
+          <a href="https://data.linz.govt.nz/layer/116628" target="_blank" rel="noopener"
+            >LINZ Shipping Lane 1 multibeam depth model</a
+          >, surveyed 1999 to 2004 (CC BY 4.0, Toitū Te Whenua LINZ).
+        </li>
+        <li>
+          Depth elsewhere, charted rock and seabed notes:
+          <a href="https://data.linz.govt.nz/layer/50866" target="_blank" rel="noopener"
+            >LINZ nautical chart data</a
+          >, soundings and related layers (CC BY 4.0, Toitū Te Whenua LINZ). Not to be used for navigation.
+        </li>
+        <li>
+          Bottom type: Kerr, V.C. 2010,
+          <a
+            href="https://www.doc.govt.nz/documents/conservation/marine-and-coastal/northland-marine-habitat-map-report-1.pdf"
+            target="_blank"
+            rel="noopener"
+            >Marine Habitat Map of Northland</a
+          >, Department of Conservation.
         </li>
         <li>
           Marine reserve boundary: Department of Conservation (CC BY 4.0). Indicative only.

@@ -102,3 +102,12 @@ scripts/make_basemap.sh                   # map tiles, fonts and icons (needs th
 ```
 
 Both write into `web/public/`. Review the diff and commit.
+
+The seabed grids are rebuilt the same way, by hand, and need the development dependencies and a LINZ Data Service key in your shell:
+
+```bash
+export LINZ_API_KEY=...                  # never commit it
+uv run python scripts/build_seabed.py    # writes web/public/seabed/ and docs/seabed-report.md
+```
+
+Sources are cached under `data/seabed/raw/`, so a second run needs no network. Read `docs/seabed-report.md` before committing: it compares the new grids with charted soundings. See [seabed.md](seabed.md).

@@ -2,11 +2,13 @@
 
 Fishing conditions, and in time a fish habitat map, for **Bream Bay and Urquharts Bay** near Whangārei, New Zealand.
 
-Live site: <https://breamfishing.sonka.cloud.edu.au> (stage 0, live since 26 November 2026)
+Live site: <https://breamfishing.sonka.cloud.edu.au> (stages 0 and 1, live since 26 November 2026)
 
 ## What it does today
 
 Stage 0 is a conditions site. For three zones (the harbour entrance, the inner bay and the outer bay with the Hen and Chickens) it shows wind, gusts, waves, rain and tide for the next seven days, and rates every hour as good, fair or poor for boat, kayak and shore fishing. The map shows the no-take marine reserve and boat ramps.
+
+Stage 1 adds the seabed: depth, how far that depth can be trusted, bottom type and depth contours, on a 100 m grid joined from the 2025 LINZ coastal LiDAR, a LINZ multibeam survey and LINZ chart data. Tap the water to read them for a spot. See [docs/seabed.md](docs/seabed.md).
 
 It does **not** yet say where the fish are. See [docs/roadmap.md](docs/roadmap.md) for what comes next and why the first fish layer will be a habitat index, not a catch prediction.
 
@@ -24,6 +26,7 @@ server:  nginx ── /        static frontend (web/dist)
 
 - **`src/breamfish/`**: the pipeline. `breamfish refresh` fetches the sources, computes the comfort ratings and atomically writes `conditions.json` and `status.json`. If a source is down it reuses a cached copy and says so in `status.json`.
 - **`web/`**: the frontend, in Vite, TypeScript, MapLibre GL and uPlot. It is fully static: no API, no database, no cookies. The basemap is a self-hosted OpenStreetMap extract, so the page loads nothing from other sites.
+- **`scripts/build_seabed.py`**: builds the seabed grids. It is run by hand on a development machine, and its output is committed under `web/public/seabed/`, so the server needs none of its libraries.
 - **Deployment** is pull-based. CI publishes the `release` branch; the server's configuration lives in a separate Puppet control repo, which keeps the checkout at the head of that branch and puts back anything changed by hand. See [docs/runbook.md](docs/runbook.md).
 
 ## Run it locally
