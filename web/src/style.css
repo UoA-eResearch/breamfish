@@ -161,6 +161,10 @@ a {
   border-top-color: var(--surface);
 }
 
+#map .maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--surface);
+}
+
 /* The seabed layer picker: a map control under the zoom buttons. */
 #map .layers {
   clear: both;
