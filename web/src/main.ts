@@ -36,6 +36,9 @@ let charts: ChartSet | null = null;
 
 const panel = $("panel");
 const bayMap = new BayMap($("map"), (id) => selectZone(id), renderSeabedSources);
+bayMap.setStyle(state.style);
+// In `npm run dev` only: a handle on the map, for moving it from the console.
+if (import.meta.env.DEV) Object.assign(window, { bayMap });
 
 // ---------------------------------------------------------------- helpers
 
@@ -311,6 +314,7 @@ $("style-tabs").addEventListener("click", (event) => {
   if (!id || !model) return;
   state.style = id;
   store("style", id);
+  bayMap.setStyle(id);
   renderAll();
 });
 

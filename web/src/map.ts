@@ -1,6 +1,7 @@
-// The map: a self-hosted OpenStreetMap basemap of the bay, the seabed layers
-// (depth, how sure the depth is, bottom type, contours), the no-take marine
-// reserve, boat ramps, and one tappable marker per forecast zone.
+// The map: a self-hosted OpenStreetMap basemap of the bay, the snapper habitat
+// index, the seabed layers (depth, how sure the depth is, bottom type,
+// contours), the no-take marine reserve, boat ramps, and one tappable marker
+// per forecast zone.
 
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import * as maplibregl from "maplibre-gl";
@@ -11,7 +12,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
 import { comfortClass } from "./comfort";
-import type { SeabedManifest } from "./data";
+import type { SeabedManifest, Season, Style } from "./data";
+import { Habitat, type HabitatPoint } from "./habitat";
+import type { Rgba } from "./paint";
 import { BOTTOM_COLOUR, DEPTH_BANDS, Seabed, type Overlay, type SeabedPoint } from "./seabed";
 import { store, stored } from "./storage";
 
@@ -21,13 +24,50 @@ const BAY: [[number, number], [number, number]] = [
   [174.8, -35.8],
 ];
 
-type OverlayChoice = Overlay | "none";
+/** Seabed tiles are painted in the page, under this made-up address: seabed://layer/z/x/y. */
+const TILE_SCHEME = "seabed";
+/** The side of a map tile in CSS pixels. Tiles are painted at the screen's own density. */
+const TILE_SIZE = 256;
+/** Zoomed in past this, a screen pixel is finer than the 100 m grid can fill: fetch the 20 m one. */
+const DRAWING_FROM_ZOOM = 10.5;
+
+/**
+ * The basemap's layers, with the sea moved underneath the land. As Protomaps
+ * orders them, all water is drawn over the land; here the sea is drawn first
+ * and only lakes and rivers stay on top. The seabed layers go in between, just
+ * under the land (before LAND), so the basemap's own coastline trims them: no
+ * blocky edge, and nothing painted over a beach.
+ */
+const LAND = "earth";
+function basemapLayers(flavor: "light" | "dark"): maplibregl.LayerSpecification[] {
+  const all = layers("basemap", namedFlavor(flavor), { lang: "en" }) as maplibregl.LayerSpecification[];
+  const water = all.find((layer) => layer.id === "water");
+  const land = all.findIndex((layer) => layer.id === LAND);
+  if (!water || water.type !== "fill" || land < 0) return all; // a basemap arranged some other way
+  const sea = { ...water, id: "sea", filter: ["all", water.filter, ["==", "kind", "ocean"]] };
+  const inland = { ...water, filter: ["all", water.filter, ["!=", "kind", "ocean"]] };
+  const rest = all.map((layer) => (layer === water ? inland : layer)) as maplibregl.LayerSpecification[];
+  rest.splice(land, 0, sea as maplibregl.LayerSpecification);
+  return rest;
+}
+
+type OverlayChoice = Overlay | "snapper" | "none";
 const OVERLAYS: { id: OverlayChoice; label: string }[] = [
+  { id: "snapper", label: "Snapper habitat" },
   { id: "depth", label: "Depth" },
   { id: "quality", label: "How sure the depth is" },
   { id: "bottom", label: "Bottom type" },
   { id: "none", label: "None" },
 ];
+
+const SEASONS: { id: Season; label: string }[] = [
+  { id: "summer", label: "Summer" },
+  { id: "autumn", label: "Autumn" },
+  { id: "winter", label: "Winter" },
+  { id: "spring", label: "Spring" },
+];
+/** Where the method, the evidence and the checks are set out. */
+const METHODS = "/methods.html";
 
 /** A small element with text, built without innerHTML so nothing needs escaping. */
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, text = "", className = ""): HTMLElementTagNameMap[K] {
@@ -68,6 +108,54 @@ function describeSpot(point: SeabedPoint): HTMLElement {
   return box;
 }
 
+/** What the habitat index says about a tapped spot, and what each factor contributed. */
+function describeHabitat(point: HabitatPoint, habitat: Habitat, style: Style): HTMLElement {
+  const box = el("div", "", "spot spot-habitat");
+  const head = el("p", "", "spot-depth");
+  const name = habitat.manifest.species.name;
+  if (point.class === 0) {
+    head.append(el("strong", `${name} habitat: not rated here`));
+    box.append(head, el("p", "Inside a no-take reserve, or a 100 m square that is mostly land.", "spot-note"));
+    return box;
+  }
+  const chip = el("i", "", "habitat-chip");
+  chip.style.background = `var(--habitat-${point.class})`;
+  head.append(chip, `${name} habitat, ${point.season}: `, el("strong", point.label.toLowerCase()));
+  box.append(head);
+
+  const rows = el("dl");
+  for (const factor of point.factors) {
+    const dd = el("dd");
+    if (factor.suitability == null) {
+      dd.append(el("small", "Not mapped here, so left out"));
+    } else {
+      const bar = el("span", "", "habitat-bar");
+      bar.setAttribute("role", "img");
+      bar.setAttribute("aria-label", `suits ${Math.round(factor.suitability * 10)} out of 10`);
+      bar.append(el("span"));
+      (bar.firstElementChild as HTMLElement).style.width = `${Math.round(factor.suitability * 100)}%`;
+      dd.append(bar);
+    }
+    rows.append(el("dt", factor.label), dd);
+  }
+  box.append(rows);
+
+  const limit = habitat.manifest.reach.within_m_of_mainland_shore[style];
+  const note = el("p", "", "spot-note");
+  if (limit != null && !point.reach[style]) {
+    note.append(
+      style === "shore"
+        ? "Beyond a cast from the mainland shore. "
+        : `More than ${limit / 1000} km from the mainland shore, taken here as beyond kayak reach. `,
+    );
+  }
+  const link = el("a", "How this is worked out");
+  link.href = METHODS;
+  note.append("Ranked against the rest of the bay this season; not a catch forecast. ", link, ".");
+  box.append(note);
+  return box;
+}
+
 export interface ZoneMarker {
   id: string;
   label: string;
@@ -82,8 +170,18 @@ export class BayMap {
   private fitted = false;
   private padding = { top: 0, right: 0, bottom: 0, left: 0 };
   private seabed: Seabed | null = null;
-  private overlay = (stored("overlay") ?? "depth") as OverlayChoice;
+  private habitat: Habitat | null = null;
+  private overlay = (stored("overlay") ?? "snapper") as OverlayChoice;
+  /** The season the habitat layer shows: the present one until another is picked. */
+  private season: Season = "summer";
+  private style: Style = "boat";
   private contours = stored("contours") !== "off";
+  /** Which picture each painted source is showing now, by source id. */
+  private showing = new Map<string, string>();
+  private renderControl: () => void = () => {};
+  /** Goes up when the tiles would come out differently, so the map asks for them again. */
+  private painted = 0;
+  private colours = new Map<string, Rgba>();
 
   constructor(
     container: HTMLElement,
@@ -92,6 +190,7 @@ export class BayMap {
   ) {
     maplibregl.setWorkerUrl(workerUrl);
     maplibregl.addProtocol("pmtiles", new Protocol().tile);
+    maplibregl.addProtocol(TILE_SCHEME, (request) => this.paintTile(request.url));
     const flavor = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     const origin = window.location.origin;
 
@@ -120,7 +219,7 @@ export class BayMap {
               '<a href="https://www.doc.govt.nz" target="_blank" rel="noopener">DOC</a>',
           },
         },
-        layers: layers("basemap", namedFlavor(flavor), { lang: "en" }),
+        layers: basemapLayers(flavor),
       },
     });
 
@@ -134,12 +233,81 @@ export class BayMap {
     });
   }
 
+  /** Where the seabed layers go in the stack: under the basemap's land if it has one. */
+  private get underLand(): string {
+    return this.map.getLayer(LAND) ? LAND : "reserves-fill";
+  }
+
   /** A CSS custom property from style.css as [r, g, b, a] for painting. */
-  private colour = (name: string): [number, number, number, number] => {
-    const hex = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    const value = parseInt(hex.slice(1), 16);
-    return [(value >> 16) & 255, (value >> 8) & 255, value & 255, 255];
+  private colour = (name: string): Rgba => {
+    let rgba = this.colours.get(name);
+    if (!rgba) {
+      const hex = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const value = parseInt(hex.slice(1), 16);
+      rgba = [(value >> 16) & 255, (value >> 8) & 255, value & 255, 255];
+      this.colours.set(name, rgba);
+    }
+    return rgba;
   };
+
+  /** Answer the map's request for one seabed tile with a picture of it. */
+  private async paintTile(url: string): Promise<{ data: ImageBitmap }> {
+    const match = /^[a-z]+:\/\/([a-z.]+)\/(\d+)\/(\d+)\/(\d+)/.exec(url);
+    if (!match || !this.seabed) throw new Error(`no seabed tile at ${url}`);
+    const [layer, which] = match[1].split(".");
+    const [z, x, y] = match.slice(2).map(Number);
+    // Two picture pixels to a CSS pixel on a dense screen, so nothing is stretched.
+    const px = TILE_SIZE * (window.devicePixelRatio > 1.25 ? 2 : 1);
+    let image: ImageData;
+    if (layer === "snapper" || layer === "veil") {
+      if (!this.habitat) throw new Error(`no habitat tile at ${url}`);
+      image =
+        layer === "snapper"
+          ? this.habitat.paintIndex(which as Season, z, x, y, px, this.colour)
+          : this.habitat.paintVeil(which as Style, z, x, y, px, this.colour);
+    } else {
+      image = this.seabed.paintTile(layer as Overlay, z, x, y, px, this.colour);
+    }
+    return { data: await createImageBitmap(image) };
+  }
+
+  /** The address of a painted layer's tiles: "depth", "snapper.spring", "veil.kayak". */
+  private tiles = (layer: string): string[] => [`${TILE_SCHEME}://${layer}/{z}/{x}/{y}?${this.painted}`];
+
+  /** Show a painted layer, adding it to the map the first time and repainting it if what it shows has changed. */
+  private paintedLayer(id: string, layer: string, opacity: number): void {
+    const map = this.map;
+    if (!map.getLayer(id)) {
+      map.addSource(id, {
+        type: "raster",
+        tiles: this.tiles(layer),
+        tileSize: TILE_SIZE,
+        bounds: this.seabed!.manifest.bounds,
+        // One level past the map's closest zoom, so the closest view is painted, not stretched.
+        maxzoom: Math.ceil(map.getMaxZoom()) + 1,
+      });
+      map.addLayer({ id, type: "raster", source: id, paint: { "raster-opacity": opacity, "raster-fade-duration": 0 } }, "contours");
+    } else if (this.showing.get(id) !== layer) {
+      map.getSource<maplibregl.RasterTileSource>(id)?.setTiles(this.tiles(layer));
+    }
+    this.showing.set(id, layer);
+    map.setLayoutProperty(id, "visibility", "visible");
+  }
+
+  /** Zoomed in, fetch the 20 m grid, then have the map paint its tiles again from it. */
+  private sharpen(): void {
+    if (!this.seabed || this.map.getZoom() < DRAWING_FROM_ZOOM) return;
+    this.map.off("zoom", this.sharpenOnZoom);
+    void this.seabed.loadDrawing().then((ready) => {
+      if (!ready) return;
+      this.painted++;
+      for (const [id, layer] of this.showing) {
+        this.map.getSource<maplibregl.RasterTileSource>(id)?.setTiles(this.tiles(layer));
+      }
+    });
+  }
+
+  private sharpenOnZoom = (): void => this.sharpen();
 
   private async addSeabed(): Promise<void> {
     try {
@@ -150,6 +318,14 @@ export class BayMap {
       return;
     }
     this.onSeabed(this.seabed.manifest);
+    try {
+      this.habitat = await Habitat.load(this.seabed.land);
+      this.season = this.habitat.seasonNow();
+    } catch (error) {
+      // The seabed layers still work without the habitat index.
+      console.error(error);
+    }
+    if (!this.habitat && this.overlay === "snapper") this.overlay = "depth";
     const map = this.map;
     const css = getComputedStyle(document.documentElement);
     const ink = css.getPropertyValue("--contour").trim() || "#0d366b";
@@ -166,7 +342,7 @@ export class BayMap {
           "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 14, 1.2],
         },
       },
-      "reserves-fill",
+      this.underLand,
     );
     map.addLayer(
       {
@@ -183,59 +359,93 @@ export class BayMap {
         },
         paint: { "text-color": ink, "text-halo-color": surface, "text-halo-width": 1.2 },
       },
-      "reserves-fill",
+      this.underLand,
     );
     // Under the zoom buttons on a wide screen; on a phone the top right is the free corner.
     const wide = window.matchMedia("(min-width: 860px)").matches;
     map.addControl(this.layerControl(this.seabed), wide ? "top-left" : "top-right");
     this.showSeabed();
+    map.on("zoom", this.sharpenOnZoom);
+    this.sharpen();
   }
 
-  /** Show the chosen seabed layer, painting it the first time it is asked for. */
+  /** Show the chosen layer, adding it to the map the first time it is asked for. */
   private showSeabed(): void {
     const map = this.map;
-    const seabed = this.seabed;
-    if (!seabed) return;
+    if (!this.seabed) return;
+    const hide = (id: string) => map.getLayer(id) && map.setLayoutProperty(id, "visibility", "none");
     for (const { id } of OVERLAYS) {
-      if (id !== "none" && id !== this.overlay && map.getLayer(`seabed-${id}`)) {
-        map.setLayoutProperty(`seabed-${id}`, "visibility", "none");
-      }
+      if (id !== this.overlay) hide(`seabed-${id}`);
     }
-    if (this.overlay !== "none") {
-      const id = `seabed-${this.overlay}`;
-      if (!map.getLayer(id)) {
-        const [west, south, east, north] = seabed.manifest.bounds;
-        map.addSource(id, {
-          type: "canvas",
-          canvas: seabed.paint(this.overlay, this.colour),
-          animate: false,
-          coordinates: [
-            [west, north],
-            [east, north],
-            [east, south],
-            [west, south],
-          ],
-        });
-        map.addLayer(
-          {
-            id,
-            type: "raster",
-            source: id,
-            paint: {
-              "raster-opacity": 0.8,
-              "raster-fade-duration": 0,
-              // Depth is a surface, so blend between pixels; classes keep hard edges.
-              "raster-resampling": this.overlay === "depth" ? "linear" : "nearest",
-            },
-          },
-          "contours",
-        );
-      }
-      map.setLayoutProperty(id, "visibility", "visible");
+    if (this.overlay !== "snapper") {
+      hide("seabed-veil");
+      hide("shore");
     }
+    if (this.overlay === "snapper") void this.showHabitat();
+    else if (this.overlay !== "none") this.paintedLayer(`seabed-${this.overlay}`, this.overlay, 0.8);
     for (const id of ["contours", "contours-label"]) {
       map.setLayoutProperty(id, "visibility", this.contours ? "visible" : "none");
     }
+  }
+
+  /**
+   * Show the habitat index for the chosen season. For kayak and shore fishing
+   * the water out of reach is greyed, and for shore fishing the shore itself is
+   * drawn as a line of points, each rated by the water a cast can reach.
+   */
+  private async showHabitat(): Promise<void> {
+    const map = this.map;
+    const habitat = this.habitat;
+    const season = this.season;
+    if (!habitat) return;
+    try {
+      await habitat.loadSeason(season);
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+    if (this.overlay !== "snapper" || this.season !== season) return; // another choice was made meanwhile
+    this.paintedLayer("seabed-snapper", `snapper.${season}`, 0.85);
+    if (this.style === "boat") {
+      if (map.getLayer("seabed-veil")) map.setLayoutProperty("seabed-veil", "visibility", "none");
+    } else {
+      this.paintedLayer("seabed-veil", `veil.${this.style}`, 0.78);
+    }
+
+    const colours = habitat.manifest.classes.labels.flatMap((_, i) => {
+      const [r, g, b] = this.colour(`--habitat-${i + 1}`);
+      return [i + 1, `rgb(${r}, ${g}, ${b})`];
+    });
+    const fill = ["match", ["get", season], ...colours, "rgba(0, 0, 0, 0)"] as unknown as maplibregl.ExpressionSpecification;
+    if (!map.getLayer("shore")) {
+      const css = getComputedStyle(document.documentElement);
+      map.addSource("shore", { type: "geojson", data: `/habitat/${habitat.manifest.reach.shore_points}` });
+      map.addLayer(
+        {
+          id: "shore",
+          type: "circle",
+          source: "shore",
+          paint: {
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2, 12, 4, 15, 9],
+            "circle-color": fill,
+            "circle-stroke-color": css.getPropertyValue("--ink").trim() || "#0b0b0b",
+            "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 0.3, 13, 1],
+          },
+        },
+        "ramps",
+      );
+    } else {
+      map.setPaintProperty("shore", "circle-color", fill);
+    }
+    map.setLayoutProperty("shore", "visibility", this.style === "shore" ? "visible" : "none");
+  }
+
+  /** The style of fishing chosen in the panel: it decides what the habitat layer greys out. */
+  setStyle(style: Style): void {
+    if (style === this.style) return;
+    this.style = style;
+    if (this.overlay === "snapper") this.showSeabed();
+    this.renderControl();
   }
 
   /** The layer picker and its key, as a map control under the zoom buttons. */
@@ -255,11 +465,48 @@ export class BayMap {
       item.prepend(chip);
       return item;
     };
+    const seasons = el("div", "", "layers-seasons");
+    seasons.setAttribute("role", "group");
+    seasons.setAttribute("aria-label", "Season");
+    for (const { id, label } of SEASONS) {
+      const button = el("button", label);
+      button.type = "button";
+      button.dataset.season = id;
+      button.addEventListener("click", () => {
+        this.season = id;
+        this.showSeabed();
+        render();
+      });
+      seasons.append(button);
+    }
     const render = () => {
       const chosen = OVERLAYS.find((o) => o.id === this.overlay)!;
-      summary.textContent = this.overlay === "none" ? "Seabed" : `Seabed: ${chosen.label.toLowerCase()}`;
+      summary.textContent =
+        this.overlay === "none" ? "Map layer" : this.overlay === "snapper" ? `${chosen.label}: ${this.season}` : `Seabed: ${chosen.label.toLowerCase()}`;
       key.replaceChildren();
-      if (this.overlay === "depth") {
+      seasons.hidden = this.overlay !== "snapper";
+      for (const button of seasons.children) {
+        button.setAttribute("aria-pressed", String((button as HTMLElement).dataset.season === this.season));
+      }
+      if (this.overlay === "snapper" && this.habitat) {
+        const { classes, reach, species } = this.habitat.manifest;
+        const fifths = classes.labels.map((label, i) => swatch(`--habitat-${i + 1}`, label)).reverse();
+        fifths[0].append(" for the season");
+        key.append(...fifths);
+        const limit = reach.within_m_of_mainland_shore[this.style];
+        if (this.style === "kayak" && limit != null) {
+          key.append(swatch("--veil", `Greyed: more than ${limit / 1000} km from the mainland shore, taken as beyond kayak reach`));
+        } else if (this.style === "shore") {
+          key.append(swatch("--veil", "Greyed: beyond a cast. The points along the shore are rated by the water a cast can reach"));
+        }
+        const link = el("a", "How it is worked out");
+        link.href = METHODS;
+        note.replaceChildren(
+          `How well the depth, the bottom and the reef nearby suit ${species.name.toLowerCase()} in ${this.season}, ranked within the bay. Not a catch forecast. `,
+          link,
+          ".",
+        );
+      } else if (this.overlay === "depth") {
         key.append(...DEPTH_BANDS.map((band, i) => swatch(`--depth-${i}`, band.label)));
         note.textContent = "Depth at the lowest tides. Tap the water for details.";
       } else if (this.overlay === "quality") {
@@ -285,6 +532,7 @@ export class BayMap {
     const choices = el("fieldset");
     choices.append(el("legend", "Colour the water by", "visually-hidden"));
     for (const { id, label } of OVERLAYS) {
+      if (id === "snapper" && !this.habitat) continue;
       const input = el("input");
       input.type = "radio";
       input.name = "seabed-overlay";
@@ -311,7 +559,8 @@ export class BayMap {
     const linesRow = el("label", "", "layers-contours");
     linesRow.append(lines, "Depth contours");
 
-    box.append(summary, choices, linesRow, key, note);
+    box.append(summary, choices, seasons, linesRow, key, note);
+    this.renderControl = render;
     render();
     return { onAdd: () => box, onRemove: () => box.remove() };
   }
@@ -381,16 +630,29 @@ export class BayMap {
         return;
       }
       const reserve = named("reserves-fill");
-      const spot = this.seabed?.inspect(event.lngLat.lng, event.lngLat.lat);
+      // The seabed is read only where the map shows water: a tap on the land says nothing.
+      const drawn = map.getLayer(LAND) ? map.queryRenderedFeatures(event.point, { layers: [LAND, "water"] }) : [];
+      const onLand = drawn.length > 0 && !drawn.some((f) => f.layer.id === "water");
+      const spot = onLand ? null : this.seabed?.inspect(event.lngLat.lng, event.lngLat.lat);
       if (reserve === undefined && !spot) return;
       const content = el("div");
       if (reserve !== undefined) {
         content.append(el("p", `${reserve}: no-take. All fishing is prohibited here.`, "spot-rule"));
       }
-      if (spot) content.append(describeSpot(spot));
+      const habitat = this.overlay === "snapper" ? this.habitat : null;
+      const rating = el("div");
+      if (spot) content.append(rating, describeSpot(spot));
       popup.setDOMContent(content).addTo(map);
       // Once it has been laid out, so its real size and place are known.
       requestAnimationFrame(() => this.reveal(popup));
+      if (spot && habitat && this.seabed) {
+        const cell = this.seabed.cellAt(event.lngLat.lng, event.lngLat.lat);
+        void habitat.inspect(cell, this.season).then((point) => {
+          if (!point || !popup.isOpen()) return;
+          rating.append(describeHabitat(point, habitat, this.style));
+          requestAnimationFrame(() => this.reveal(popup));
+        });
+      }
     });
     map.on("mouseenter", "ramps", () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", "ramps", () => (map.getCanvas().style.cursor = ""));
