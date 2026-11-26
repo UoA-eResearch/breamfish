@@ -1,6 +1,6 @@
 # Working on breamfish
 
-A public repo. A fishing-conditions site for Bream Bay and Urquharts Bay, growing in stages into a habitat-suitability map. Read [docs/roadmap.md](docs/roadmap.md) for the stages and [docs/data-sources.md](docs/data-sources.md) for which sources are verified.
+A public repo. A fishing-conditions site for Bream Bay and Urquharts Bay with a seabed map and a snapper habitat index, growing in stages. Read [docs/roadmap.md](docs/roadmap.md) for the stages and [docs/data-sources.md](docs/data-sources.md) for which sources are verified.
 
 ## Commands
 
@@ -13,6 +13,8 @@ cd web && npm run build                   # type-check + production build
 python3 scripts/fetch_static_layers.py    # refresh reserves + ramps GeoJSON (committed)
 scripts/make_basemap.sh                   # rebuild the self-hosted basemap (committed)
 uv run python scripts/build_seabed.py     # rebuild the seabed grids (committed; needs LINZ_API_KEY once)
+uv run python scripts/build_habitat.py    # rebuild the habitat index (committed; run after either of the above)
+python3 scripts/fetch_habitat_points.py   # refresh the snapper records the index is tested against (committed)
 ```
 
 ## Layout
@@ -21,6 +23,8 @@ uv run python scripts/build_seabed.py     # rebuild the seabed grids (committed;
 - `web/src/data.ts`: the TypeScript mirror of that JSON. Change both sides together.
 - `web/public/`: committed static assets (tiles, fonts, sprites, layers, the seabed grids).
 - `scripts/seabed/` and `scripts/build_seabed.py`: the hand-run seabed build, described in [docs/seabed.md](docs/seabed.md). `web/src/seabed.ts` reads what `scripts/seabed/publish.py` writes; change both sides together.
+- `src/breamfish/habitat.py` and `src/breamfish/species/snapper.toml`: the habitat index and everything it is built from, described in [docs/habitat.md](docs/habitat.md). `scripts/build_habitat.py` writes `web/public/habitat/`; `web/src/habitat.ts` and `web/src/methods.ts` read it. `grids.py` and `nztm.py` read grids and project points without numpy.
+- `web/src/paint.ts`: paints any grid onto the map a tile at a time. `web/methods.html` is the second page of the site.
 - `.github/workflows/ci.yml`: tests, builds, and publishes the `release` branch that the server runs.
 
 ## Rules that are easy to break
@@ -30,7 +34,10 @@ uv run python scripts/build_seabed.py     # rebuild the seabed grids (committed;
 - **No runtime dependence on an LLM or any paid API.** Anything of that kind is an optional batch step that is skipped cleanly when no key is present.
 - **The formula lives in Python only.** The frontend displays what the pipeline computed; it never recomputes a rating or score.
 - **Publish atomically and never replace good data with nothing.** Keep `status.json` honest about stale or failed sources.
-- **Call it what it is.** Ratings are "comfort" for conditions; the future fish layer is a "habitat and conditions index", never a catch probability. No solunar tables, moon phase or barometric pressure as inputs.
+- **Call it what it is.** Ratings are "comfort" for conditions; the fish layer is a "habitat index", never a catch probability or a forecast. No solunar tables, moon phase or barometric pressure as inputs.
+- **Every number in a species file says where it comes from.** A curve has a `basis` (what is published) and a `judgement` (what was decided here); evidence cites a reference that says how much of it was read. Do not add a figure from memory: read the source, or mark it as judgement.
+- **Rebuild what depends on what you changed.** The habitat grids are built from the seabed grids and the species file; `tests/test_habitat_build.py` fails until `scripts/build_habitat.py` has been run and its output committed.
+- **The 20 m drawing grid is for drawing.** Slope, roughness, distances and the habitat index come from the 100 m grid only.
 - **Times:** UTC in data, `Pacific/Auckland` for display. LINZ tide tables are in local time.
 - Keep the Python small and plain (stdlib, httpx, astral). No framework. New dependencies need wheels for Python 3.14, because the server installs with `pip --require-hashes` and has no compilers.
 - **Geospatial libraries stay in the `dev` group.** numpy, rasterio, scipy and contourpy are for `scripts/` and the tests only. Nothing under `src/breamfish/` may import them: the server installs the runtime dependencies alone.
