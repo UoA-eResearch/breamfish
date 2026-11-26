@@ -1,0 +1,105 @@
+name: CI
+
+# Every push and pull request is tested and built. A push to main that passes
+# is then published to the `release` branch, which is what the server runs:
+# Puppet keeps the server's checkout at the head of that branch.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.14" # the server's Python (Ubuntu 26.04)
+
+      - name: Python checks
+        run: |
+          uv sync --frozen
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run pytest -q
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build the frontend
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      # What the server needs, and nothing else: the Python source, the pinned
+      # and hash-checked dependency list, and the built site.
+      - name: Assemble the release tree
+        run: |
+          mkdir -p release/web
+          cp -R src pyproject.toml LICENSE release/
+          cp -R web/dist release/web/dist
+          uv export --frozen --no-dev --no-emit-project --format requirements-txt \
+            --output-file release/requirements.txt
+          echo "${GITHUB_SHA}" > release/SOURCE_COMMIT
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release
+          path: release
+          retention-days: 7
+
+  release:
+    name: Publish the release branch
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release
+          path: release
+
+      - name: Push to the release branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git clone --quiet --depth 1 --branch release "$remote" out 2>/dev/null; then
+            find out -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          else
+            git init --quiet --initial-branch release out
+            git -C out remote add origin "$remote"
+          fi
+          cp -R release/. out/
+          cd out
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          if git diff --cached --quiet; then
+            echo "The release branch already matches this build."
+          else
+            git commit --quiet \
+              -m "Release ${GITHUB_SHA::12}" \
+              -m "Built from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+            git push --quiet origin release
+          fi

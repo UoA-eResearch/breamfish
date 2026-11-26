@@ -1,0 +1,54 @@
+# Roadmap
+
+Each stage ends with something live on the site.
+
+| Stage | What goes live | Main data |
+|---|---|---|
+| **0 Skeleton** (this release) | HTTPS site, map, no-take reserve, boat ramps, seven-day conditions with a comfort rating for boat, kayak and shore | Open-Meteo, LINZ tides, DOC reserves, OpenStreetMap |
+| 1 Seabed | Merged depth surface with a depth-quality overlay, contours, slope and roughness, reef, sand and mud; tap a spot for depth and bottom type | LINZ LiDAR, multibeam and chart layers, DOC habitat map |
+| 2 Snapper habitat | Static and seasonal snapper index, reach for each fishing style, a methods page, first validation numbers | Stage 1 grids, the 2023 fish atlas, OBIS and iNaturalist points |
+| 3 Dynamic index | Hourly seven-day frames, time slider, a "why this score" panel, best-window summary, offline caching | Satellite sea temperature, tide stage and range, Ruakaka river flow |
+| 4 Evidence loop | A "how good is this?" page, bottom temperature from fishing-gear sensors, a templated daily briefing, a rules watcher, an optional catch log | Mangōpare sensors |
+| 5 Cluster | Modelled tidal currents and nearshore waves replace the proxies | One-off jobs on a Slurm cluster |
+| 6 More species | Kingfish, kahawai, trevally, gurnard, john dory | As above |
+
+## Why a habitat index and not a catch prediction
+
+A catch predictor needs records of where and when fish were caught. For this bay those do not exist in public: commercial catch is published only for areas thousands of square kilometres across, and recreational catch only as regional tables. See [data-sources.md](data-sources.md).
+
+So the fish layer will be a **habitat and conditions index**:
+
+- built from published response curves (depth by season, bottom type, distance to reef edge, water temperature, tide stage), one YAML file per species with a citation for each curve;
+- combined as a weighted geometric mean, so every cell can show how much each factor contributed;
+- shown in five classes, not as a percentage;
+- checked against the point records that do exist, with the result published on the site;
+- masked inside the no-take reserve.
+
+Wind and sea state do not enter the fish index. They grey a cell out for a fishing style when it is not comfortable to be there.
+
+A catch log comes later, to start building the local dataset that would let the index be tested and eventually fitted.
+
+## Design decisions already made
+
+- **Grid:** NZTM (EPSG:2193) at 100 m, about 380 by 380 cells. Slope and roughness are computed at 10 m where LiDAR or multibeam exists, then summarised to the cell.
+- **Depth merge:** LiDAR where valid, multibeam on the approaches, chart soundings elsewhere, a global grid as background, with a `depth_source` layer so the site can show how good the depth is at each spot. LiDAR is on a land datum and charts on chart datum; they must be reconciled with the Marsden Point offset before merging.
+- **Delivery:** static files only. Compressed byte grids for static factors, then the index and its factor contributions per hour, painted in the browser as one image. No tile server, no API. The formula lives in Python.
+- **Shore fishing** is scored per stretch of accessible shoreline, not per grid cell.
+- **Left out on purpose:** solunar tables, moon phase (spring and neap range is kept, through the tide), barometric pressure.
+
+## Where a cluster helps, and where it does not
+
+It does not help the website or the hourly pipeline, which take seconds on one small server. It helps with two one-off jobs whose results are small files the server can use indefinitely:
+
+1. **A 2D tidal model of the harbour and bay** (SCHISM or Delft3D-FM, run with MPI in restartable chunks), validated against the Marsden Point gauge and reduced to harmonic constituents for each cell. This fills the one real data gap: nobody publishes currents at the harbour entrance.
+2. **A nearshore wave lookup table** (SWAN, as a job array over offshore height, period and direction), because the public wave forecast stops several kilometres offshore.
+
+Results travel as versioned files through an object-store container that the web server pulls from, so the server and the cluster never need a network path to each other.
+
+## Where a language model might help, and where it must not
+
+No part of the running site depends on one. Possible optional batch uses, run only when an API key is present:
+
+- turning published fishing reports into structured facts (date, area, species, good or slow), storing the facts and a link, never the prose, as weak labels for validation.
+
+It must never compute or adjust scores, state regulations, or give go or no-go advice. The daily briefing is templated text from the forecast numbers, and the rules watcher is a scheduled job that opens an issue when an official page changes.
