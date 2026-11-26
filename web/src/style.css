@@ -63,6 +63,11 @@
   --habitat-5: #4631ad;
   --veil: #f3f2ee;
 
+  /* The wind drawn moving over the map: light with a dark edge, so it shows
+     over every layer above, and the same in both themes. */
+  --flow: #ffffff;
+  --flow-edge: #0b0b0b;
+
   --sheet-h: 0px;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 15px;
@@ -294,6 +299,28 @@ a {
   margin-top: 1px;
   border: 1px solid var(--border);
   border-radius: 3px;
+}
+
+/* The wind's key: a line for each strength, longer and heavier as it rises. */
+.layers-wind li {
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+}
+
+.layers-wind i {
+  margin-top: 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--ink);
+}
+
+/* The moving wind: a canvas over the map's own, under the markers and popups. */
+#map .flow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .layers-note {

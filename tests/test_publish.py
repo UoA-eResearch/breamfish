@@ -260,3 +260,77 @@ def test_status_lists_each_source():
     assert broken["ok"] is False
     assert broken["sources"][1]["ok"] is False
     assert broken["sources"][1]["fetched_at"] is None
+
+
+# --- the wind field -----------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("direction", "expected"),
+    [
+        (0, (0.0, -10.0)),  # a northerly: the air goes south
+        (90, (-10.0, 0.0)),  # an easterly: the air goes west
+        (180, (0.0, 10.0)),
+        (270, (10.0, 0.0)),
+        (225, (7.1, 7.1)),  # a south-wester: the air goes north-east
+    ],
+)
+def test_blowing_to_turns_where_the_wind_is_from_into_where_the_air_goes(direction, expected):
+    assert publish.blowing_to(10.0, direction) == expected
+
+
+def test_blowing_to_has_no_answer_without_both_speed_and_direction():
+    assert publish.blowing_to(None, 200) == (None, None)
+    assert publish.blowing_to(5.0, None) == (None, None)
+    assert publish.blowing_to(0.0, 0) == (0.0, 0.0)  # calm, and not -0.0
+
+
+def wind_field(hours):
+    """A two by two lattice with a steady southerly, and nothing at the last hour."""
+    cells = [[lat, lon] for lat in (-35.8, -35.9) for lon in (174.5, 174.6)]
+    return {
+        "lats": [-35.8, -35.9],
+        "lons": [[174.5, 174.6], [174.49, 174.59]],
+        "points": [
+            {
+                "cell": cell,
+                "wind_speed_10m": dict.fromkeys(hours[:-1], 12.0),
+                "wind_direction_10m": dict.fromkeys(hours[:-1], 180),
+            }
+            for cell in cells
+        ],
+    }
+
+
+def test_build_wind_gives_a_frame_for_each_hour_and_null_where_there_is_none():
+    document = publish.build_wind(NOW, wind_field(HOURS), NOW)
+
+    assert (
+        document["hours"] == publish.build_conditions(NOW, steady_forecast(), None, None)["hours"]
+    )
+    assert document["grid"] == {
+        "nrows": 2,
+        "ncols": 2,
+        "lats": [-35.8, -35.9],
+        "lons": [[174.5, 174.6], [174.49, 174.59]],
+    }
+    assert document["u"][0] == [0.0] * 4
+    assert document["v"][0] == [12.0] * 4
+    assert document["u"][-1] is None
+    assert document["v"][-1] is None
+    json.dumps(document, allow_nan=False)  # nothing in it that a browser would reject
+
+
+def test_build_wind_leaves_a_gap_at_one_point_as_null():
+    field = wind_field(HOURS)
+    del field["points"][2]["wind_direction_10m"][HOURS[5]]
+
+    document = publish.build_wind(NOW, field, NOW)
+
+    assert document["u"][5] == [0.0, 0.0, None, 0.0]
+    assert document["v"][5] == [12.0, 12.0, None, 12.0]
+
+
+def test_cell_km_is_the_spacing_of_the_lattice():
+    # A tenth of a degree is 11.1 km north to south, and 9.0 km east to west at 35.85 S.
+    assert publish.cell_km([-35.8, -35.9], [[174.5, 174.6], [174.49, 174.59]]) == [11.1, 9.0]

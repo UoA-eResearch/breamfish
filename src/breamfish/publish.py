@@ -1,6 +1,7 @@
-"""Build the two published documents and write files so readers never see half of one."""
+"""Build the published documents and write files so readers never see half of one."""
 
 import json
+import math
 import os
 from datetime import UTC, timedelta
 from pathlib import Path
@@ -147,6 +148,75 @@ def build_conditions(now, forecast: list, marine: list | None, tide_events: list
                 for zone in config.ZONES
             },
         },
+    }
+
+
+def blowing_to(speed, direction) -> tuple:
+    """The east and north parts of a wind, as where the air is going.
+
+    direction is where the wind blows from, in degrees clockwise from north, which is
+    how forecasts give it. So a northerly of 10 knots is (0, -10): the air moves south.
+    """
+    if speed is None or direction is None:
+        return None, None
+    bearing = math.radians(direction)
+    return rounded(-speed * math.sin(bearing), 1), rounded(-speed * math.cos(bearing), 1)
+
+
+def wind_frames(field: dict, hours: list) -> tuple[list, list]:
+    """The east and north parts at every lattice point, for each hour.
+
+    An hour with no value at any point is None, not a row of nulls.
+    """
+    east, north = [], []
+    for t in hours:
+        parts = [
+            blowing_to(point["wind_speed_10m"].get(t), point["wind_direction_10m"].get(t))
+            for point in field["points"]
+        ]
+        empty = all(u is None for u, _ in parts)
+        east.append(None if empty else [u for u, _ in parts])
+        north.append(None if empty else [v for _, v in parts])
+    return east, north
+
+
+def cell_km(lats: list, lons: list) -> list:
+    """About how far apart the lattice's points are, [north-south, east-west], in km."""
+    degree_km = 111.2
+    middle = math.radians(sum(lats) / len(lats))
+    down = (lats[0] - lats[-1]) / (len(lats) - 1)
+    across = sum((row[-1] - row[0]) / (len(row) - 1) for row in lons) / len(lons)
+    return [rounded(down * degree_km, 1), rounded(across * degree_km * math.cos(middle), 1)]
+
+
+def build_wind(now, field: dict, fetched_at) -> dict:
+    """The wind.json document: the forecast wind over the whole map, hour by hour.
+
+    field is openmeteo.parse_wind_field's result. u and v are knots, and say where the
+    air is going, so the site can draw it moving without averaging compass bearings.
+    The hours are conditions.json's hours.
+    """
+    hours = window(now)
+    east, north = wind_frames(field, hours)
+    return {
+        "schema": 1,
+        "generated_at": iso_second(now),
+        "fetched_at": iso_minute(fetched_at),
+        "hours": [iso_minute(t) for t in hours],
+        "unit": "kn",
+        "source": {
+            "id": "openmeteo_wind_field",
+            "name": "Open-Meteo forecast",
+            "cell_km": cell_km(field["lats"], field["lons"]),
+        },
+        "grid": {
+            "nrows": len(field["lats"]),
+            "ncols": len(field["lons"][0]),
+            "lats": field["lats"],
+            "lons": field["lons"],
+        },
+        "u": east,
+        "v": north,
     }
 
 

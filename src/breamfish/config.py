@@ -44,6 +44,28 @@ FORECAST_DAYS = 9
 # for the open bay and will overstate the sheltered water close to the beach.
 CELL_SELECTION = "sea"
 
+# The wind drawn on the map: one more forecast request, for a lattice of points laid out
+# row by row from the north-west corner. Checked on 2026-11-27: these 48 points came
+# back as 48 different model cells, 0.0703 degrees of latitude apart (7.8 km) and about
+# 0.116 of longitude (10.5 km), each row starting a little further west than the one
+# above it. So the bay is four or five cells across, and that is all the detail there is.
+# "nearest" and not "sea": this is the model's own field, land cells included.
+# One request costs 48 of Open-Meteo's calls: about 1,150 a day at one run an hour.
+WIND_LATTICE = {
+    "north": -35.70,
+    "west": 174.30,
+    "dlat": 0.07,
+    "dlon": 0.115,
+    "nrows": 8,
+    "ncols": 6,
+}
+WIND_CELL_SELECTION = "nearest"
+# Same shape as WEATHER_FIELDS; the key and the decimal places are not used.
+WIND_FIELD_FIELDS = [
+    ("speed", "wind_speed_10m", 1),
+    ("direction", "wind_direction_10m", 0),
+]
+
 # One file per calendar year. Times in it are New Zealand local time.
 TIDE_URL = (
     "https://static.charts.linz.govt.nz/tide-tables/maj-ports/csv/Marsden%20Point%20{year}.csv"

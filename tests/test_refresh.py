@@ -5,7 +5,7 @@ import os
 from datetime import timedelta
 
 import pytest
-from conftest import AT_NOW, FIRST_CANNED, NOW, fake_get
+from conftest import AT_NOW, FIRST_CANNED, NOW, WIND_FIELD, fake_get
 
 from breamfish import refresh
 
@@ -14,8 +14,14 @@ SENTINEL = b'{"schema": 1, "note": "the last good file"}\n'
 
 
 @pytest.fixture
-def responses(forecast_json, marine_json, tide_csv) -> dict:
-    return {"/v1/forecast": forecast_json, "/v1/marine": marine_json, "tide-tables": tide_csv}
+def responses(forecast_json, marine_json, tide_csv, wind_field_json) -> dict:
+    # The wind field first: its request goes to /v1/forecast too, and the first match wins.
+    return {
+        WIND_FIELD: wind_field_json,
+        "/v1/forecast": forecast_json,
+        "/v1/marine": marine_json,
+        "tide-tables": tide_csv,
+    }
 
 
 def read(data_dir, name):
@@ -28,8 +34,12 @@ def test_run_publishes_conditions_and_status(tmp_path, responses, capsys):
     code = refresh.run(tmp_path, fake_get(responses, calls), now=NOW)
 
     assert code == 0
-    assert len(calls) == 3  # one forecast, one marine, one tide file
-    assert sorted(os.listdir(tmp_path / "published")) == ["conditions.json", "status.json"]
+    assert len(calls) == 4  # one forecast, one marine, one tide file, one wind field
+    assert sorted(os.listdir(tmp_path / "published")) == [
+        "conditions.json",
+        "status.json",
+        "wind.json",
+    ]
 
     conditions = read(tmp_path, "conditions.json")
     assert conditions["schema"] == 1
@@ -63,6 +73,7 @@ def test_run_publishes_conditions_and_status(tmp_path, responses, capsys):
         "openmeteo_forecast",
         "openmeteo_marine",
         "linz_tides",
+        "openmeteo_wind_field",
     ]
     for source in status["sources"]:
         assert source["ok"] is True
@@ -75,6 +86,7 @@ def test_run_publishes_conditions_and_status(tmp_path, responses, capsys):
         "openmeteo_forecast: ok, fetched 2026-11-26T04:05Z",
         "openmeteo_marine: ok, fetched 2026-11-26T04:05Z",
         "linz_tides: ok, fetched 2026-11-26T04:05Z",
+        "openmeteo_wind_field: ok, fetched 2026-11-26T04:05Z",
     ]
 
 
@@ -89,6 +101,8 @@ def test_raw_responses_are_cached_with_fetch_times(tmp_path, responses, forecast
         "openmeteo_forecast.json.meta.json",
         "openmeteo_marine.json",
         "openmeteo_marine.json.meta.json",
+        "openmeteo_wind_field.json",
+        "openmeteo_wind_field.json.meta.json",
     ]
     assert (cache / "openmeteo_forecast.json").read_bytes() == forecast_json
     meta = json.loads((cache / "openmeteo_forecast.json.meta.json").read_text())
@@ -106,7 +120,7 @@ def test_no_forecast_and_no_cache_leaves_conditions_alone(tmp_path, responses, c
     assert (published / "conditions.json").read_bytes() == SENTINEL
     status = read(tmp_path, "status.json")  # still written, and says what is wrong
     assert status["ok"] is False
-    forecast, marine, tide = status["sources"]
+    forecast, marine, tide, _ = status["sources"]
     assert forecast["ok"] is False
     assert forecast["fetched_at"] is None
     assert forecast["message"] == "fetch failed (RuntimeError: connection refused)"
@@ -182,7 +196,7 @@ def test_marine_down_still_publishes_with_null_waves(tmp_path, responses):
     assert entrance["comfort"]["boat"][AT_NOW] == 3  # rated on wind and gust alone
     status = read(tmp_path, "status.json")
     assert status["ok"] is False
-    assert [source["ok"] for source in status["sources"]] == [True, False, True]
+    assert [source["ok"] for source in status["sources"]] == [True, False, True, True]
 
 
 def test_tides_down_still_publishes_with_a_null_tide(tmp_path, responses):
@@ -194,5 +208,82 @@ def test_tides_down_still_publishes_with_a_null_tide(tmp_path, responses):
     assert tide["height"] == [None] * 192
     assert tide["rate"] == [None] * 192
     status = read(tmp_path, "status.json")
-    assert [source["ok"] for source in status["sources"]] == [True, True, False]
+    assert [source["ok"] for source in status["sources"]] == [True, True, False, True]
     assert status["sources"][2]["message"].startswith("2026: fetch failed")
+
+
+# --- the wind field -----------------------------------------------------------------
+
+# The lattice point that is the entrance zone's own model cell: row 3, column 2.
+ENTRANCE_CELL = 3 * 6 + 2
+
+
+def test_run_publishes_the_wind_field(tmp_path, responses):
+    refresh.run(tmp_path, fake_get(responses), now=NOW)
+
+    wind = read(tmp_path, "wind.json")
+    assert wind["schema"] == 1
+    assert wind["generated_at"] == "2026-11-26T04:05:12Z"
+    assert wind["fetched_at"] == "2026-11-26T04:05Z"
+    assert wind["unit"] == "kn"
+    assert wind["hours"] == read(tmp_path, "conditions.json")["hours"]
+    assert wind["source"] == {
+        "id": "openmeteo_wind_field",
+        "name": "Open-Meteo forecast",
+        "cell_km": [7.8, 10.5],
+    }
+
+    grid = wind["grid"]
+    assert (grid["nrows"], grid["ncols"]) == (8, 6)
+    assert len(grid["lats"]) == 8
+    assert [len(row) for row in grid["lons"]] == [6] * 8
+    assert [grid["lats"][3], grid["lons"][3][2]] == [-35.887524, 174.53488]
+
+    # Hours the canned forecast does not reach are null, not rows of nulls.
+    after = FIRST_CANNED + 12
+    assert wind["u"][:FIRST_CANNED] == [None] * FIRST_CANNED
+    assert wind["u"][after:] == [None] * (192 - after)
+    assert all(len(frame) == 48 for frame in wind["u"][FIRST_CANNED:after])
+    # At the hour of the run that cell has 9.5 knots from 230 degrees, a south-wester:
+    # the air is going north-east.
+    assert wind["u"][AT_NOW][ENTRANCE_CELL] == 7.3
+    assert wind["v"][AT_NOW][ENTRANCE_CELL] == 6.1
+
+
+def test_wind_field_down_leaves_wind_json_alone_and_still_publishes(tmp_path, responses, capsys):
+    published = tmp_path / "published"
+    published.mkdir()
+    (published / "wind.json").write_bytes(SENTINEL)
+
+    code = refresh.run(tmp_path, fake_get(responses | {WIND_FIELD: DOWN}), now=NOW)
+
+    assert code == 0  # the conditions do not depend on it
+    assert (published / "wind.json").read_bytes() == SENTINEL
+    assert read(tmp_path, "conditions.json")["zones"][0]["wind_kn"][AT_NOW] == 8.6
+    status = read(tmp_path, "status.json")
+    assert status["ok"] is False
+    assert [source["ok"] for source in status["sources"]] == [True, True, True, False]
+    assert status["sources"][3]["message"] == "fetch failed (RuntimeError: connection refused)"
+    assert "wind.json left as it was" in capsys.readouterr().err
+
+
+def test_forecast_down_does_not_stop_the_wind_field(tmp_path, responses):
+    code = refresh.run(tmp_path, fake_get(responses | {"/v1/forecast": DOWN}), now=NOW)
+
+    assert code == 1
+    assert read(tmp_path, "wind.json")["u"][AT_NOW][ENTRANCE_CELL] == 7.3
+    assert [source["ok"] for source in read(tmp_path, "status.json")["sources"]] == [
+        False,
+        True,
+        True,
+        True,
+    ]
+
+
+def test_a_wind_field_with_nothing_in_the_window_is_not_published(tmp_path, responses):
+    refresh.run(tmp_path, fake_get(responses), now=NOW + timedelta(days=2))
+
+    assert not (tmp_path / "published" / "wind.json").exists()
+    field = read(tmp_path, "status.json")["sources"][3]
+    assert field["ok"] is False
+    assert field["message"] == "no wind values for the next seven days"
