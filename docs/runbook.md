@@ -111,3 +111,11 @@ uv run python scripts/build_seabed.py    # writes web/public/seabed/ and docs/se
 ```
 
 Sources are cached under `data/seabed/raw/`, so a second run needs no network. Read `docs/seabed-report.md` before committing: it compares the new grids with charted soundings. See [seabed.md](seabed.md).
+
+The habitat index is built from the seabed grids and the species file, so rebuild it after either changes. It needs no key, no network and no extra libraries:
+
+```bash
+uv run python scripts/build_habitat.py   # writes web/public/habitat/ and docs/habitat-report.md
+```
+
+Read `docs/habitat-report.md` before committing: it shows how much of the bay falls in each class and how the index ranks the places snapper were recorded. The tests fail if the committed habitat files are out of date. See [habitat.md](habitat.md).

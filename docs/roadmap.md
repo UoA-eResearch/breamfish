@@ -6,7 +6,7 @@ Each stage ends with something live on the site.
 |---|---|---|
 | **0 Skeleton** (live since 26 November 2026) | HTTPS site, map, no-take reserve, boat ramps, seven-day conditions with a comfort rating for boat, kayak and shore | Open-Meteo, LINZ tides, DOC reserves, OpenStreetMap |
 | **1 Seabed** (live since 26 November 2026) | Merged depth surface with a depth-quality overlay, contours, slope and roughness, reef, sand and mud; tap a spot for depth and bottom type | LINZ LiDAR, multibeam and chart layers, DOC habitat map |
-| 2 Snapper habitat | Static and seasonal snapper index, reach for each fishing style, a methods page, first validation numbers | Stage 1 grids, the 2023 fish atlas, OBIS and iNaturalist points |
+| **2 Snapper habitat** (built 26 November 2026) | Seasonal snapper habitat index in five classes, reach for kayak and shore fishing, a methods page, first numbers against real records; seabed layers drawn at 20 m when zoomed in | Stage 1 grids, published studies, OBIS and iNaturalist points |
 | 3 Dynamic index | Hourly seven-day frames, time slider, a "why this score" panel, best-window summary, offline caching | Satellite sea temperature, tide stage and range, Ruakaka river flow |
 | 4 Evidence loop | A "how good is this?" page, bottom temperature from fishing-gear sensors, a templated daily briefing, a rules watcher, an optional catch log | Mangōpare sensors |
 | 5 Cluster | Modelled tidal currents and nearshore waves replace the proxies | One-off jobs on a Slurm cluster |
@@ -18,7 +18,7 @@ A catch predictor needs records of where and when fish were caught. For this bay
 
 So the fish layer will be a **habitat and conditions index**:
 
-- built from published response curves (depth by season, bottom type, distance to reef edge, water temperature, tide stage), one YAML file per species with a citation for each curve;
+- built from published response curves (depth by season, bottom type, distance to reef edge, water temperature, tide stage), one file per species with a citation for each curve. Stage 2 has the first three; see [habitat.md](habitat.md);
 - combined as a weighted geometric mean, so every cell can show how much each factor contributed;
 - shown in five classes, not as a percentage;
 - checked against the point records that do exist, with the result published on the site;
@@ -28,13 +28,21 @@ Wind and sea state do not enter the fish index. They grey a cell out for a fishi
 
 A catch log comes later, to start building the local dataset that would let the index be tested and eventually fitted.
 
+## Left over from stage 2
+
+- **The 2023 fish atlas** (Stephenson et al.) has not been compared with the index. Its demersal fish layers are a 1.8 GB download.
+- **Tows that caught no snapper.** The research trawl records would allow a presence-and-absence test; only the tows that caught snapper are used so far.
+- **Accessible shoreline.** Shore reach is every stretch of mainland shore. Whether it can be reached on foot (a road, a track, a beach) is not checked.
+
 ## Design decisions already made
 
-- **Grid:** NZTM (EPSG:2193) at 100 m, about 380 by 380 cells. Slope and roughness are computed at 10 m where LiDAR or multibeam exists, then summarised to the cell.
+- **Grid:** NZTM (EPSG:2193) at 100 m, about 380 by 380 cells. Slope and roughness are computed at 10 m where LiDAR or multibeam exists, then summarised to the cell. A second grid at 20 m is for drawing only; nothing is computed from it.
+- **Species files are TOML**, not YAML: Python reads TOML from its standard library, and the server installs nothing extra.
+- **Classes are cut within each season.** The curves give the shape of a season, not how one season compares with another, so "highest" means the best fifth of the bay for that time of year.
 - **Depth merge:** LiDAR where valid, multibeam across the middle of the bay, chart soundings elsewhere, a global grid as background, with a `depth_source` layer so the site can show how good the depth is at each spot. Depths are metres below chart datum at Marsden Point, which is 1.746 m below the LiDAR's datum, NZVD2016. Built in stage 1; see [seabed.md](seabed.md).
 - **Bottom type** keeps "soft sediment, sand or mud not told apart" as a class of its own, because that is all the habitat map says for most of the open bay. Stage 2 response curves must treat it as such and not as sand.
-- **Delivery:** static files only. Compressed byte grids for static factors, then the index and its factor contributions per hour, painted in the browser as one image. No tile server, no API. The formula lives in Python.
-- **Shore fishing** is scored per stretch of accessible shoreline, not per grid cell.
+- **Delivery:** static files only. Compressed byte grids for static factors, then the index and its factor contributions per hour, painted in the browser a map tile at a time. No tile server, no API. The formula lives in Python.
+- **Shore fishing** is scored per stretch of shoreline, not per grid cell: a point every 100 m, rated by the water a cast can reach.
 - **Left out on purpose:** solunar tables, moon phase (spring and neap range is kept, through the tide), barometric pressure.
 
 ## Where a cluster helps, and where it does not

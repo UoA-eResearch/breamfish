@@ -61,7 +61,7 @@ Things to know about these:
 
 | Source | What it gives | Access | Status |
 |---|---|---|---|
-| LINZ coastal LiDAR, 1 m and 2 m grids | The same surveys as above at finer resolution | Same bucket, `dem_1m` and `dem_2m` | probed. Not needed at 100 m cells. CC BY 4.0. |
+| LINZ coastal LiDAR, 1 m and 2 m grids | The same surveys as above at finer resolution | Same bucket, `dem_1m` and `dem_2m` | probed. Not needed: the 10 m grid is enough for the 20 m drawing grid. CC BY 4.0. |
 | LINZ multibeam surface, HS15 at 10 m | A finer surface for the inshore part of the shipping lane | By email request to LINZ, quoting the id from index layer 122710 | read. Not requested. |
 | LINZ chart layers not used yet | Wrecks 50633, obstructions 50586/50587, cables 50546, restricted areas 50598 | LINZ Data Service WFS; needs the key | probed. CC BY 4.0. |
 | LINZ survey index | Which survey each depth comes from | Layer 53388 | probed. The chart's own "quality of data" layers carry the same dates and were used instead. |
@@ -84,14 +84,15 @@ Nobody publishes tidal currents for the harbour entrance. That gap is what the c
 
 | Source | What it gives | Access | Status |
 |---|---|---|---|
-| OBIS | About 6,200 fish records in the box. 3,608 are one snapper tagging cruise from late 1993 (about 55 positions, with depth and length); about 630 are research trawls with depth and catch weight, the latest from 2017; 1,001 are a 1990 to 1993 diver survey | `api.obis.org/v3/occurrence?geometry=<WKT>` | probed. Search snapper as *Pagrus auratus*; *Chrysophrys auratus* returns nothing. |
-| iNaturalist | 913 fish observations, 802 research grade, mostly since 2020, median accuracy 54 m | `api.inaturalist.org/v1/observations` with a bounding box and `taxon_id=47178` | probed. Biased to what divers and shore walkers see. Mixed licences, many CC BY-NC. |
-| Stephenson et al. 2023 fish atlas | Modelled distributions: reef fish on a 250 m grid (50 MB), demersal fish on 1 km (1.8 GB), with uncertainty | [Zenodo 7083642](https://zenodo.org/records/7083642) | probed (record). CC BY 4.0. Whether its snapper layer is useful at this scale is unchecked. |
+| OBIS | About 6,200 fish records in the box. For snapper, 3,650: 3,544 from the Ministry for Primary Industries tag database (mostly one programme in November and December 1993, positions to the nearest minute of arc, with depth and length), 90 research trawl tows with depth and catch weight (1901, then 1965 to 2017), and a few diver survey sites | `api.obis.org/v3/occurrence?geometry=<WKT>` | **in use** to test the habitat index, reduced to one row per place and time ([habitat.md](habitat.md)). Search snapper as *Pagrus auratus*; *Chrysophrys auratus* returns nothing. CC BY 4.0 (the 1901 trawl is CC0). Only tows that caught snapper are fetched so far. |
+| iNaturalist | 913 fish observations, 802 research grade, mostly since 2020, median accuracy 54 m. For snapper (`taxon_id=530886`), 36 research grade | `api.inaturalist.org/v1/observations` with a bounding box and `taxon_id=47178` (all ray-finned fish) | **in use** for snapper: the 7 observations under CC0 or CC BY with a position good to 200 m. The 23 under CC BY-NC are not copied. Biased to what divers and shore walkers see. |
+| Stephenson et al. 2023 fish atlas | Modelled distributions: reef fish on a 250 m grid (50 MB), demersal fish on 1 km (1.8 GB), with uncertainty | [Zenodo 7083642](https://zenodo.org/records/7083642) | probed (record). CC BY 4.0. Not fetched. Its paper does not say which predictors mattered for snapper. Whether its snapper layer is useful at this scale is unchecked. |
+| Published studies of snapper | Where snapper live by depth, season, bottom and distance from reef: trawl survey reports, baited-camera counts, acoustic tagging | Fisheries New Zealand and NIWA reports, journal papers | **in use**: the habitat index is built from them. Each is cited, with how much of it was read, in [`snapper.toml`](../src/breamfish/species/snapper.toml) and on the site's methods page. |
 | Fisheries New Zealand catch data | Commercial catch by statistical area | Areas 003 (about 14,300 km²) and 005 (about 2,660 km²) cover the box | probed (boundaries). Far too coarse to place fish within the bay. |
 | Recreational surveys | National Panel Survey, boat-ramp interviews and cameras | PDF reports only | read. No data at bay scale. |
 | Global Fishing Watch | AIS fishing effort at about 0.01° | API needs a free token; CC BY-NC | read. Inshore vessels here mostly carry no AIS, so expect little. |
 
-**There is no public fine-scale record of where fish are caught in this bay.** That is why the first fish layer is a habitat index validated against the sparse points above.
+**There is no public fine-scale record of where fish are caught in this bay.** That is why the first fish layer is a habitat index tested against the sparse points above.
 
 ### Rules
 
