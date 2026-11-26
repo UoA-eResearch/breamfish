@@ -4,7 +4,7 @@ Each stage ends with something live on the site.
 
 | Stage | What goes live | Main data |
 |---|---|---|
-| **0 Skeleton** (this release) | HTTPS site, map, no-take reserve, boat ramps, seven-day conditions with a comfort rating for boat, kayak and shore | Open-Meteo, LINZ tides, DOC reserves, OpenStreetMap |
+| **0 Skeleton** (live since 26 November 2026) | HTTPS site, map, no-take reserve, boat ramps, seven-day conditions with a comfort rating for boat, kayak and shore | Open-Meteo, LINZ tides, DOC reserves, OpenStreetMap |
 | 1 Seabed | Merged depth surface with a depth-quality overlay, contours, slope and roughness, reef, sand and mud; tap a spot for depth and bottom type | LINZ LiDAR, multibeam and chart layers, DOC habitat map |
 | 2 Snapper habitat | Static and seasonal snapper index, reach for each fishing style, a methods page, first validation numbers | Stage 1 grids, the 2023 fish atlas, OBIS and iNaturalist points |
 | 3 Dynamic index | Hourly seven-day frames, time slider, a "why this score" panel, best-window summary, offline caching | Satellite sea temperature, tide stage and range, Ruakaka river flow |

@@ -78,6 +78,22 @@ openstack security group rule create breamfish-web --protocol tcp --dst-port 443
 
 The server makes outbound HTTPS requests to Open-Meteo, LINZ, GitHub and PyPI.
 
+## Setting up a server from scratch
+
+What it took the first time, in order. The Puppet side is the two profiles named at the top; these are the steps around them.
+
+1. **Network.** One interface on a network that can reach the Puppet server, a public address on it, and the security group above plus SSH. A second interface with its own default route makes replies leave by the wrong one; use one.
+2. **Agent.** `sudo apt-get install puppet-agent`, then set `server` and `certname` in `/etc/puppet/puppet.conf`. If the Puppet server's public name is not reachable from the VM, pin it to the reachable address in `/etc/hosts` first (the profile keeps that entry afterwards).
+3. **Certificate request.** `sudo puppet ssl submit_request` on the VM, then on the Puppet server compare the fingerprint in `puppetserver ca list` and sign it.
+4. **Check the HTTP challenge before the real thing.** With nothing listening on port 80 yet: `sudo certbot certonly --standalone --dry-run -d <hostname> --non-interactive --agree-tos --register-unsafely-without-email`. This uses Let's Encrypt's staging service and saves nothing.
+5. **First runs.** `sudo puppet agent --test --noop`, read what it would do, then run it without `--noop`. A second run should report no changes.
+
+Things that bit, so they do not bite again:
+
+- **Ubuntu's stock `nginx.conf` already sets `server_tokens`.** nginx rejects a second one in `conf.d`, so the vhosts set it themselves.
+- **Ubuntu's own `puppet-agent` package installs the service disabled.** The profile manages `puppet.service`; without that nothing re-checks the node or deploys releases.
+- **The agent here is Puppet 8.10 and the server was 7.17.** That pairing is not officially supported. It worked for this catalog; re-test with `--noop` after upgrading either side.
+
 ## Refreshing committed assets
 
 ```bash

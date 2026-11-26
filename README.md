@@ -2,7 +2,7 @@
 
 Fishing conditions, and in time a fish habitat map, for **Bream Bay and Urquharts Bay** near Whangārei, New Zealand.
 
-Live site: <https://breamfishing.sonka.cloud.edu.au>
+Live site: <https://breamfishing.sonka.cloud.edu.au> (stage 0, live since 26 November 2026)
 
 ## What it does today
 
