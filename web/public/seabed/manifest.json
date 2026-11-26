@@ -1,0 +1,289 @@
+{
+ "schema": 1,
+ "built": "2026-11-26",
+ "grid": {
+  "crs": "EPSG:2193",
+  "cell_m": 100,
+  "west_e": 1724100,
+  "north_n": 6039600,
+  "ncols": 386,
+  "nrows": 384,
+  "order": "rows from north to south, cells from west to east"
+ },
+ "bounds": [
+  174.373088,
+  -36.12596,
+  174.807874,
+  -35.774211
+ ],
+ "projection_check": [
+  [
+   174.3730881,
+   -35.7798449,
+   1724100.0,
+   6039600.0
+  ],
+  [
+   174.8000061,
+   -35.7742114,
+   1762700.0,
+   6039600.0
+  ],
+  [
+   174.3790919,
+   -36.1259597,
+   1724100.0,
+   6001200.0
+  ],
+  [
+   174.8078744,
+   -36.1202547,
+   1762700.0,
+   6001200.0
+  ],
+  [
+   174.5900153,
+   -35.9502609,
+   1743400.0,
+   6020400.0
+  ]
+ ],
+ "datum": {
+  "name": "Chart datum, Marsden Point",
+  "note": "Depths are metres below chart datum, the zero of the tide predictions. Negative depths dry at low tide.",
+  "chart_datum_in_nzvd2016_m": -1.746,
+  "mhws_m": 2.75,
+  "msl_m": 1.63
+ },
+ "layers": {
+  "depth": {
+   "dtype": "uint16",
+   "scale": 0.1,
+   "offset": -10.0,
+   "file": "depth.bin.gz",
+   "unit": "m",
+   "label": "Depth below chart datum"
+  },
+  "depth_source": {
+   "file": "depth_source.bin.gz",
+   "dtype": "uint8",
+   "label": "Where the depth comes from",
+   "classes": [
+    {
+     "code": 1,
+     "key": "lidar",
+     "label": "Airborne LiDAR, March 2025",
+     "quality": 1,
+     "cells": 27559,
+     "name": "LINZ coastal LiDAR, Whangārei to Bream Bay and Mangawhai to Snells (2025), 10 m",
+     "url": "https://registry.opendata.aws/nz-coastal/",
+     "licence": "CC BY 4.0, Toitū Te Whenua Land Information New Zealand"
+    },
+    {
+     "code": 2,
+     "key": "multibeam",
+     "label": "Multibeam sonar, 1999 to 2004",
+     "quality": 1,
+     "cells": 39882,
+     "name": "LINZ Shipping Lane 1 Multibeam 20m Depth Model (surveys HS6 and HS15)",
+     "url": "https://data.linz.govt.nz/layer/116628",
+     "licence": "CC BY 4.0, Toitū Te Whenua Land Information New Zealand"
+    },
+    {
+     "code": 3,
+     "key": "chart_recent",
+     "label": "Chart soundings, surveyed since 1990",
+     "quality": 2,
+     "cells": 26663,
+     "name": "LINZ nautical chart data (soundings, depth contours, depth areas, quality of data), three scale bands",
+     "url": "https://data.linz.govt.nz/layer/50866",
+     "licence": "CC BY 4.0, Toitū Te Whenua Land Information New Zealand"
+    },
+    {
+     "code": 4,
+     "key": "chart_old",
+     "label": "Chart soundings, surveyed before 1990",
+     "quality": 3,
+     "cells": 8682,
+     "name": "LINZ nautical chart data (soundings, depth contours, depth areas, quality of data), three scale bands",
+     "url": "https://data.linz.govt.nz/layer/50866",
+     "licence": "CC BY 4.0, Toitū Te Whenua Land Information New Zealand"
+    },
+    {
+     "code": 5,
+     "key": "chart_undated",
+     "label": "Chart soundings, survey date not recorded",
+     "quality": 3,
+     "cells": 114,
+     "name": "LINZ nautical chart data (soundings, depth contours, depth areas, quality of data), three scale bands",
+     "url": "https://data.linz.govt.nz/layer/50866",
+     "licence": "CC BY 4.0, Toitū Te Whenua Land Information New Zealand"
+    },
+    {
+     "code": 6,
+     "key": "background",
+     "label": "Global grid (GEBCO)",
+     "quality": 4,
+     "cells": 0,
+     "name": "GEBCO 2020 grid, through Open Topo Data",
+     "url": "https://www.gebco.net/",
+     "licence": "Public domain, GEBCO Compilation Group (2020)"
+    }
+   ]
+  },
+  "slope": {
+   "dtype": "uint8",
+   "scale": 0.25,
+   "offset": -0.25,
+   "file": "slope.bin.gz",
+   "unit": "degrees",
+   "label": "Slope",
+   "note": "Mean slope of the cell, measured on the 10 m LiDAR or 20 m multibeam grid. Empty where the depth is from charts."
+  },
+  "roughness": {
+   "dtype": "uint8",
+   "scale": 0.02,
+   "offset": -0.02,
+   "file": "roughness.bin.gz",
+   "unit": "m",
+   "label": "Roughness",
+   "note": "Standard deviation of depth within the cell about its best-fit plane, from the same fine grids as slope."
+  },
+  "bottom": {
+   "file": "bottom.bin.gz",
+   "dtype": "uint8",
+   "label": "Bottom type",
+   "classes": [
+    {
+     "code": 0,
+     "key": "unknown",
+     "label": "Not mapped",
+     "cells": 12952
+    },
+    {
+     "code": 1,
+     "key": "rock",
+     "label": "Reef or rock",
+     "cells": 3188
+    },
+    {
+     "code": 2,
+     "key": "sand",
+     "label": "Sand",
+     "cells": 3029
+    },
+    {
+     "code": 3,
+     "key": "mud",
+     "label": "Mud or fine sediment",
+     "cells": 6545
+    },
+    {
+     "code": 4,
+     "key": "shell",
+     "label": "Shell",
+     "cells": 18
+    },
+    {
+     "code": 5,
+     "key": "coarse",
+     "label": "Gravel or coarse sediment",
+     "cells": 313
+    },
+    {
+     "code": 6,
+     "key": "soft",
+     "label": "Soft sediment, sand or mud not told apart",
+     "cells": 76855
+    }
+   ]
+  },
+  "bottom_source": {
+   "file": "bottom_source.bin.gz",
+   "dtype": "uint8",
+   "label": "Where the bottom type comes from",
+   "classes": [
+    {
+     "code": 0,
+     "key": "none",
+     "label": "No information"
+    },
+    {
+     "code": 1,
+     "key": "chart_rock",
+     "label": "LINZ chart, charted rock",
+     "name": "LINZ nautical chart data (soundings, depth contours, depth areas, quality of data), three scale bands",
+     "url": "https://data.linz.govt.nz/layer/50866",
+     "licence": "CC BY 4.0, Toitū Te Whenua Land Information New Zealand"
+    },
+    {
+     "code": 2,
+     "key": "chart_sample",
+     "label": "LINZ chart, seabed sample here",
+     "name": "LINZ nautical chart data (soundings, depth contours, depth areas, quality of data), three scale bands",
+     "url": "https://data.linz.govt.nz/layer/50866",
+     "licence": "CC BY 4.0, Toitū Te Whenua Land Information New Zealand"
+    },
+    {
+     "code": 3,
+     "key": "habitat_map",
+     "label": "DOC habitat map (2010), coarse scale",
+     "name": "Kerr, V.C. 2010. Marine Habitat Map of Northland: Mangawhai to Ahipara, version 1. Department of Conservation",
+     "url": "https://www.doc.govt.nz/documents/conservation/marine-and-coastal/northland-marine-habitat-map-report-1.pdf",
+     "licence": "Not stated on the map service; attributed to the Department of Conservation"
+    }
+   ]
+  }
+ },
+ "quality": [
+  {
+   "code": 0,
+   "key": "none",
+   "label": "No depth",
+   "cells": 0
+  },
+  {
+   "code": 1,
+   "key": "measured",
+   "label": "Measured",
+   "detail": "A modern survey covers this spot.",
+   "cells": 67441
+  },
+  {
+   "code": 2,
+   "key": "charted",
+   "label": "Charted",
+   "detail": "Estimated between charted soundings and contours from a survey since 1990.",
+   "cells": 26663
+  },
+  {
+   "code": 3,
+   "key": "old",
+   "label": "Old survey",
+   "detail": "Estimated between sparse charted soundings from a survey before 1990 or of unknown date.",
+   "cells": 8796
+  },
+  {
+   "code": 4,
+   "key": "background",
+   "label": "Rough guide",
+   "detail": "No survey or chart detail here; a coarse global grid only.",
+   "cells": 0
+  }
+ ],
+ "contours": {
+  "file": "contours.geojson",
+  "levels_m": [
+   2,
+   5,
+   10,
+   20,
+   30,
+   40,
+   50,
+   75,
+   100
+  ],
+  "note": "Drawn from the merged grid, lightly smoothed. Not for navigation."
+ }
+}
