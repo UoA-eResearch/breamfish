@@ -40,6 +40,8 @@ export default defineConfig({
   preview: {
     headers: { "Content-Security-Policy": contentSecurityPolicy },
   },
+  // The map's worker is loaded as a module, so build it as one.
+  worker: { format: "es" },
   build: {
     outDir: "dist",
     // MapLibre is one large dependency; the default 500 kB warning is noise here.

@@ -2,8 +2,12 @@
 // reserve, boat ramps, and one tappable marker per forecast zone.
 
 import { layers, namedFlavor } from "@protomaps/basemaps";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+// MapLibre 6 runs its tile parsing in a separate worker module. Left alone it
+// looks for that file beside the main bundle, where a bundled build has none;
+// `?worker&url` makes Vite build the worker and hand back its real address.
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
 import { comfortClass } from "./comfort";
 
@@ -27,6 +31,7 @@ export class BayMap {
   private fitted = false;
 
   constructor(container: HTMLElement, private onZone: (id: string) => void) {
+    maplibregl.setWorkerUrl(workerUrl);
     maplibregl.addProtocol("pmtiles", new Protocol().tile);
     const flavor = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     const origin = window.location.origin;
