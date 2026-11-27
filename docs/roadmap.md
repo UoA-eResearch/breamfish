@@ -8,7 +8,7 @@ Each stage ends with something live on the site.
 | **1 Seabed** (live since 26 November 2026) | Merged depth surface with a depth-quality overlay, contours, slope and roughness, reef, sand and mud; tap a spot for depth and bottom type | LINZ LiDAR, multibeam and chart layers, DOC habitat map |
 | **2 Snapper habitat** (built 26 November 2026) | Seasonal snapper habitat index in five classes, reach for kayak and shore fishing, a methods page, first numbers against real records; seabed layers drawn at 20 m when zoomed in | Stage 1 grids, published studies, OBIS and iNaturalist points |
 | **2b Wind on the map** (built 27 November 2026) | The forecast wind drawn moving over the map for the hour chosen in the panel; still arrows where the device asks for less motion | Open-Meteo, a lattice of 48 model cells |
-| 2c Seabed relief | Shaded relief where the depth was measured, so reefs show as shapes; a rough-ground layer to find reef the habitat map misses. Flat shading only, no tilted 3D view | LINZ LiDAR at 2 m, the 20 m multibeam model |
+| **2c Seabed relief** (built 28 November 2026) | Shaded relief where the depth was measured, so reefs, channels and banks show as shapes; a rough-ground layer, shown on the map and in a tap, to find reef the habitat map misses. Flat shading only, no tilted 3D view | LINZ LiDAR at 2 m, the 20 m multibeam model |
 | 3 Dynamic index | Hourly seven-day frames, time slider, a "why this score" panel, best-window summary, offline caching | Satellite sea temperature, tide stage and range, Ruakaka river flow |
 | 4 Evidence loop | A "how good is this?" page, bottom temperature from fishing-gear sensors, a templated daily briefing, a rules watcher, an optional catch log, weak labels from published fishing reports | Mangōpare sensors, fishing reports |
 | 5 Cluster | Modelled tidal currents and nearshore waves replace the proxies; a daily wind forecast at about 1 km replaces the lattice | One-off and daily jobs on a Slurm cluster |
@@ -36,6 +36,12 @@ A catch log comes later, to start building the local dataset that would let the 
 - **Tows that caught no snapper.** The research trawl records would allow a presence-and-absence test; only the tows that caught snapper are used so far.
 - **Accessible shoreline.** Shore reach is every stretch of mainland shore. Whether it can be reached on foot (a road, a track, a beach) is not checked.
 
+## Left over from stage 2c
+
+- **Rough ground is shown but not used.** It does not enter bottom type, distance to reef or the habitat index. The report says what the numbers would support: a fourth source of bottom type below the chart, its samples and the habitat map, as a class of its own, with a line that rises with depth ([seabed.md](seabed.md)). Before that, build the habitat index with and without it and compare the two against the snapper records.
+- **It tells rock from sand no better than the roughness the 100 m grid already had.** A measure that also used the shape of the ground (the relief shows reefs clearly to the eye) might do better than either. Not tried.
+- **The multibeam's relief is from 20 m cells.** A 10 m surface for part of it exists by email request to LINZ ([data-sources.md](data-sources.md)).
+
 ## Design decisions already made
 
 - **Grid:** NZTM (EPSG:2193) at 100 m, about 380 by 380 cells. Slope and roughness are computed at 10 m where LiDAR or multibeam exists, then summarised to the cell. A second grid at 20 m is for drawing only; nothing is computed from it.
@@ -46,6 +52,7 @@ A catch log comes later, to start building the local dataset that would let the 
 - **Delivery:** static files only. Compressed byte grids for static factors, then the index and its factor contributions per hour, painted in the browser a map tile at a time. No tile server, no API. The formula lives in Python.
 - **Shore fishing** is scored per stretch of shoreline, not per grid cell: a point every 100 m, rated by the water a cast can reach.
 - **Left out on purpose:** solunar tables, moon phase (spring and neap range is kept, through the tide), barometric pressure. Also collecting photographs from social media or through an image search: the platforms strip positions from the copies they show, their terms forbid it, and Google's search API closes on 1 January 2027 ([data-sources.md](data-sources.md)).
+- **Relief is drawn only where the depth was measured**, by LiDAR or multibeam, and never on charted water: between soundings the surface is a guess, and shading it would draw reefs nobody measured. It is flat shading, shipped as map tiles made once from each survey's own grid; the browser computes nothing.
 - **Wind is drawn, not scored.** The streaks on the map show the forecast as published. Strength is carried by speed, length and weight of line, not colour, because every colour on the map already means something. Nothing about the wind enters the fish index.
 
 ## Where a cluster helps, and where it does not

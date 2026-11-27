@@ -10,6 +10,8 @@ Stage 0 is a conditions site. For three zones (the harbour entrance, the inner b
 
 Stage 1 adds the seabed: depth, how far that depth can be trusted, bottom type and depth contours, joined from the 2025 LINZ coastal LiDAR, a LINZ multibeam survey and LINZ chart data. It is worked out on a 100 m grid and drawn on a 20 m one when zoomed in. Tap the water to read them for a spot. See [docs/seabed.md](docs/seabed.md).
 
+Stage 2c shades the map where the depth was measured, so reefs, channels and banks show as shapes, and adds a rough-ground layer from the 2 m LiDAR. Water with only charted depths is left unshaded.
+
 Stage 2 adds a snapper habitat map: each 100 m square ranked, season by season, by how well its depth, its bottom and its distance from reef suit snapper, going by published studies. It is a **habitat index, not a catch forecast**: nobody publishes where fish are caught in this bay, so there is nothing to build or test a forecast with. The site's methods page gives every curve with the study it leans on, how the index tests against the few real records, and what it cannot tell you. See [docs/habitat.md](docs/habitat.md) and [docs/roadmap.md](docs/roadmap.md).
 
 ## How it works
@@ -27,6 +29,7 @@ server:  nginx ── /        static frontend (web/dist)
 - **`src/breamfish/`**: the pipeline. `breamfish refresh` fetches the sources, computes the comfort ratings and atomically writes `conditions.json` and `status.json`. If a source is down it reuses a cached copy and says so in `status.json`.
 - **`web/`**: the frontend, in Vite, TypeScript, MapLibre GL and uPlot. It is fully static: no API, no database, no cookies. The basemap is a self-hosted OpenStreetMap extract, so the page loads nothing from other sites.
 - **`scripts/build_seabed.py`**: builds the seabed grids. It is run by hand on a development machine, and its output is committed under `web/public/seabed/`, so the server needs none of its libraries.
+- **`scripts/build_relief.py`**: shades the 2 m LiDAR and the multibeam model into two archives of map tiles under `web/public/tiles/`, and builds the rough-ground layer. Run by hand after the seabed build, with its output committed.
 - **`scripts/build_habitat.py`**: builds the habitat index from those grids and from [`src/breamfish/species/snapper.toml`](src/breamfish/species/snapper.toml), which holds every curve and its evidence. Also run by hand, with its output committed under `web/public/habitat/`. The formula itself is in `src/breamfish/habitat.py`.
 - **Deployment** is pull-based. CI publishes the `release` branch; the server's configuration lives in a separate Puppet control repo, which keeps the checkout at the head of that branch and puts back anything changed by hand. See [docs/runbook.md](docs/runbook.md).
 

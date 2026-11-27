@@ -56,13 +56,34 @@ Things to know about these:
 - **The `verdat` (vertical datum) attribute on chart features is empty.** The datum comes from LINZ's description of its charts, not from the data.
 - **The LINZ key** is a 32-character API key made under your profile at data.linz.govt.nz. It needs query access for WFS and the `exports:write` scope for the multibeam export.
 
+## In use (stage 2c, relief and rough ground)
+
+Fetched once by `scripts/build_relief.py`, into the same cache, on 28 November 2026. The archives and the layer built from it are committed under `web/public/tiles/` and `web/public/seabed/`. The multibeam relief comes from the multibeam model above. Method in [seabed.md](seabed.md).
+
+| Source | Used for | Access | Licence and attribution |
+|---|---|---|---|
+| [LINZ coastal LiDAR](https://registry.opendata.aws/nz-coastal/) at 2 m, the same two surveys of March 2025 | Shaded relief and rough ground: 270 km² of sea | The same public bucket, no key: `.../<region>/<survey>/dem_2m/2193/<tile>.tiff`. The same five sheets. | CC BY 4.0, Toitū Te Whenua Land Information New Zealand |
+
+The `dem_2m` listing, probed on 27 November 2026:
+
+| Survey | Sheet | Size | Used |
+|---|---|---|---|
+| `northland/whangarei-to-bream-bay_2025` | AX30 | 26.5 MB | yes |
+| | AX31 | 43.4 MB | yes |
+| | AY31 | 21.5 MB | yes |
+| `auckland/mangawhai-to-snells_2025` | AY31 | 29.2 MB | yes |
+| | AY32 | 8.6 MB | yes |
+| | AZ32 | 13.9 MB | no: its north edge is at 5,982,000 N, and the grid ends at 6,001,200 N |
+
+As fetched on 28 November 2026, each sheet is 12,000 by 18,000 cells of 2 m (24 by 36 km), 32-bit floating point with -9999 for no data, LERC-compressed in 512-cell blocks with overviews, in EPSG:2193, and on the same lattice as the 100 m grid, so nothing is resampled. Heights are on NZVD2016, like the 10 m sheets. The five come to 129 MB on disk; laid out in memory at once they would be 1.5 GB, so the build reads them in blocks.
+
 ## Verified for later stages
 
 ### Seabed and depth
 
 | Source | What it gives | Access | Status |
 |---|---|---|---|
-| LINZ coastal LiDAR, 1 m and 2 m grids | The same surveys as above at finer resolution | Same bucket, `dem_1m` and `dem_2m` | probed. Not needed: the 10 m grid is enough for the 20 m drawing grid. CC BY 4.0. |
+| LINZ coastal LiDAR, 1 m grid | The same surveys as above at finer resolution still | Same bucket, `dem_1m` | probed. Not needed: the 2 m grid already fills the map's closest view, where a pixel is 1.9 m. CC BY 4.0. |
 | LINZ multibeam surface, HS15 at 10 m | A finer surface for the inshore part of the shipping lane | By email request to LINZ, quoting the id from index layer 122710 | read. Not requested. |
 | LINZ chart layers not used yet | Wrecks 50633, obstructions 50586/50587, cables 50546, restricted areas 50598 | LINZ Data Service WFS; needs the key | probed. CC BY 4.0. |
 | LINZ survey index | Which survey each depth comes from | Layer 53388 | probed. The chart's own "quality of data" layers carry the same dates and were used instead. |

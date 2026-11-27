@@ -1,10 +1,10 @@
 # The seabed layer
 
-Stage 1 of the [roadmap](roadmap.md). The site shows depth, how far that depth can be trusted, bottom type and depth contours, and a tap on the water reads them for one spot. The snapper habitat index ([habitat.md](habitat.md)) is built on these grids.
+Stage 1 of the [roadmap](roadmap.md), with the shaded relief and the rough-ground layer of stage 2c. The site shows depth, how far that depth can be trusted, bottom type and depth contours, and a tap on the water reads them for one spot. Where the depth was measured the map is shaded, so the seabed shows as shapes. The snapper habitat index ([habitat.md](habitat.md)) is built on these grids.
 
 There are two sets of grids. The **100 m grid** is the one every computed number comes from: slope, roughness, the distances, and the habitat index. The **20 m drawing grid** is the same sources laid out five times finer, for the map to paint when zoomed in and for a tap to read. Nothing is computed from the drawing grid.
 
-Everything here is static. `scripts/build_seabed.py` is run by hand on a development machine, and its outputs are committed under `web/public/seabed/`. The server never runs it and never installs the libraries it needs.
+Everything here is static. `scripts/build_seabed.py` and `scripts/build_relief.py` are run by hand on a development machine, and their outputs are committed under `web/public/seabed/` and `web/public/tiles/`. The server never runs them and never installs the libraries they need.
 
 ## Rebuilding
 
@@ -29,7 +29,27 @@ Review the diff, read the report, and commit all of them together. The same inpu
 
 Rebuild the habitat index afterwards (`uv run python scripts/build_habitat.py`): it reads these grids, and a test fails if it is out of date.
 
-The code is in `scripts/seabed/`: `grid.py` (the grid), `depth.py` (datums, merge, slope, roughness), `bottom.py` (bottom type), `distance.py` (distance to reef and to the mainland shore), `drawing.py` (the 20 m drawing grid), `sources.py` (downloads), `publish.py` (file formats), `report.py` (the checks). `tests/test_seabed_*.py` cover them without touching the network; `tests/test_seabed_build.py` runs the whole build on a made-up scene.
+The relief and the rough-ground layer are a second build, run after the first:
+
+```bash
+uv run python scripts/build_relief.py
+```
+
+It needs no key. The first run fetches the five 2 m LiDAR sheets (130 MB) from the public bucket into the same cache; it reads the multibeam model the first build cached, and the committed grids for which cells are the LiDAR's and what the maps say the bottom is. It takes under a minute, and writes:
+
+| File | What |
+|---|---|
+| `web/public/tiles/relief_lidar.pmtiles` | Shaded relief from the 2 m LiDAR, zoom 9 to 16 (15.2 MB) |
+| `web/public/tiles/relief_multibeam.pmtiles` | Shaded relief from the 20 m multibeam model, zoom 9 to 14 (0.9 MB) |
+| `web/public/seabed/fine_roughness.bin.gz` | Rough ground on the 100 m grid |
+| `web/public/seabed/manifest.json` | Its own two entries, `relief` and `layers.fine_roughness`; the rest is left as it was |
+| `docs/seabed-report.md` | Its last section, on rough ground |
+
+There is one manifest and one report, with two writers. Each build keeps what the other wrote: `build_relief.py` changes only its own entries and its own section, and `build_seabed.py` carries them over when it writes the rest again. After a seabed rebuild they are out of date until `build_relief.py` has been run, and `tests/test_seabed_relief.py` fails if the committed relief no longer matches the committed grids. Unlike the seabed build it does not touch the manifest's `built` date, so the habitat index does not need rebuilding after it.
+
+The same inputs give byte-identical archives. Each rebuild that changes them adds their full size to the repository's history, so do not rebuild them idly.
+
+The code is in `scripts/seabed/`: `grid.py` (the grid), `depth.py` (datums, merge, slope, roughness), `bottom.py` (bottom type), `distance.py` (distance to reef and to the mainland shore), `drawing.py` (the 20 m drawing grid), `relief.py` (shading and rough ground), `tiles.py` (map tiles and their archives), `sources.py` (downloads), `publish.py` (file formats), `report.py` (the checks). `tests/test_seabed_*.py` cover them without touching the network; `tests/test_seabed_build.py` and `tests/test_seabed_relief.py` run the two builds on made-up scenes.
 
 ## The grid
 
@@ -110,6 +130,52 @@ Once the browser has the drawing grid, a tap reads depth, bottom type and their 
 
 The drawing grid adds no information to the charted water, where there is none to add. *How sure the depth is* still says which is which.
 
+## Shaded relief
+
+Depth colours say how deep the water is; they do not show the shape of the bottom. A reef a few metres high in 20 m of water sits inside one colour band. So where the depth was measured the map lays light and shadow over whatever layer is showing (`scripts/seabed/relief.py`). It is flat shading: the map is not tilted.
+
+**Only measured water is shaded.** LiDAR sea no deeper than the 40 m the LiDAR is trusted to, and the multibeam where the LiDAR does not cover at least half of a 20 m square. Charted water, about a third of the sea, has none. Between soundings the surface is a guess, and shading a guess would draw reefs nobody measured. So the edge of the shading is also the edge of the surveys, and a patch of unshaded water inside a survey is a hole in it.
+
+**Each survey is shaded on its own grid**, the LiDAR at 2 m and the multibeam at 20 m, so no slope is taken across the join between them. The LiDAR is read and shaded in blocks of 4 km with a halo, so the seams between blocks do not show.
+
+How it is drawn is judgement, made by looking at the result:
+
+- **Heights are multiplied by 8.** The bay is very flat. The open seabed slopes at well under a degree and most reef edges at a few degrees, which a light 45° up barely tells from level ground.
+- **Three lights**, from 315° (half the light), 255° and 15° (a quarter each), all 45° above the horizon. Light from the north-west is the mapping convention that keeps a hill from reading as a hollow. On gentle ground the three add up to one light from the north-west; on steep ground a face turned right away from the main light still catches one of the others, so the shadow side of a reef keeps some shape.
+- **Depths are smoothed before the slope is taken**, by a Gaussian of 3 m for the LiDAR and 20 m (one cell) for the multibeam. A LiDAR sounding is good to a few centimetres at best, and over 2 m that is a slope of a degree or more.
+- **Weak shade is left out.** Shade under a tenth of full strength is dropped and the rest stretched over what is left. That is about what the LiDAR's noise still shades to on flat sand. It also keeps the archives small: a tile of flat seabed is empty and is not stored.
+- A shadow is as strong as a highlight on gentle ground, so a low sand ridge shows both sides. Deep shadow is eased towards black and not cut off at it.
+
+A face much steeper than the light is high cannot catch it squarely. With heights multiplied by 8, ground that really slopes at more than about 23° is darker than level ground even when it faces the light, and ground turned 45° from the light from about 10°. So steep reef reads as dark, textured ground with bright edges where it eases off. That is the exaggeration, not the water.
+
+**Is the multibeam's texture real?** Mid-bay the multibeam shows long ridges running north-east, which could have been survey lines. Where both surveys measured the same seabed (21,617 squares of 20 m), the LiDAR's shade averaged to 20 m and the multibeam's own have a correlation of 0.84. The surveys are twenty years apart and made by different means, so the shapes are the seabed's. The multibeam also carries faint straight stripes along its survey lines; most fall under the tenth that is left out.
+
+**The tiles.** Each pixel is black with some transparency (shadow) or white with some transparency (light), in 31 steps of each, so one set of tiles sits over every layer in the light theme and the dark one. Tiles are 256 pixel PNGs with a palette, in Web Mercator, in two [PMTiles](https://docs.protomaps.com/pmtiles/) archives (`scripts/seabed/tiles.py`): the same single-file format the basemap uses, read a few kilobytes at a time with no tile server. The LiDAR goes to zoom 16, where a pixel is 1.9 m on the ground at this latitude: the LiDAR as it comes, and what the map's closest view is drawn from. The multibeam goes to zoom 14, a pixel of 7.7 m, and the map stretches it from there in. The finest zoom is resampled once from the shade; each coarser zoom is the mean of the four pixels under each of its own. The manifest records each archive's size and a version taken from its contents, which the map adds to the address it asks for, so a browser never reads a rebuilt archive through a cached piece of the old one.
+
+The map draws the relief over the painted layer, under the contours and under its own land.
+
+## Rough ground
+
+The roughness layer above is the spread of depth about one plane through a whole hectare, from 10 m cells. The rough-ground layer (`fine_roughness` in the manifest) looks at the scale of a patch of reef:
+
+1. For each 10 m square of the 2 m LiDAR, the spread (RMS) of its 25 depths about their best-fit plane, in metres. A smooth slope scores zero. A square needs depth in at least 15 of its 25 cells.
+2. For each 100 m cell, the **third roughest** of its hundred squares. A patch of reef is often far smaller than a hectare, and a mean or a median loses it in the sand around it; the third roughest and not the roughest, so that one stray return (a moored boat, a school of fish) does not mark a hectare. A cell needs at least half its squares.
+
+It exists only for cells whose depth is the LiDAR's: 27,302 of them. The multibeam's 20 m cells are too coarse for it.
+
+A tap shows it, and *Rough ground* in the layer list colours the water by it in steps of 0.10, 0.15, 0.20 and 0.30 m. **Nothing is built from it.** It does not enter bottom type, distance to reef or the habitat index.
+
+**How well it finds rock** is in [seabed-report.md](seabed-report.md), against two sets of labels, neither of them the truth. For the committed build:
+
+- Cells the chart marks as rock have a median of 0.34 m; cells with a charted sample of sand or mud, 0.04 m. The chance that a rock cell scores higher than a sand or mud one (the AUC) is 0.93 on the chart's labels and 0.95 on the habitat map's.
+- That is about as good as the roughness the 100 m grid already had (0.92 and 0.93), and no better on the chart's labels. Looking finer did not buy much.
+- The choice of the third roughest square was made after seeing these numbers. The report lists the others: the roughest square scores 0.943, the third roughest 0.929, the tenth roughest 0.885, the mean 0.863, the median 0.781. The fewer squares a summary rests on, the better it finds charted rock, which says charted rock is often a small part of its cell.
+- With a line at 0.10 m, 75% of charted rock cells are over it and 9% of sand and mud samples. A quarter of "rock" cells read as smooth. Part of that is the labels: a cell is marked rock if a charted rock area touches any corner of it.
+- The same line marks 2,793 cells (11%) of what the habitat map calls soft sediment. Some of that is reef the map misses, which is what the layer is for. Some is sand waves, channel edges and noise.
+- **The floor rises with depth.** Flat sand scores a median of 0.04 m in the shallows and 0.09 m at 30 to 40 m, because the LiDAR's returns get noisier as the water deepens. One line for all depths would be wrong at one end.
+
+**As a fourth source of bottom type.** The numbers do not support overruling a chart or a sample with it. They would support a source below the three there are, for water those leave as soft sediment or unmapped, as a class of its own ("rough ground, likely reef") and not as rock, with a line that rises with depth. Whether that improves the habitat index has not been tested, and it stays out until it has.
+
 ## File format
 
 Each `.bin.gz` is the grid's values as unsigned integers, row by row from the north-west corner, little-endian, gzip-compressed. Stored 0 always means "nothing here". For depth, slope, roughness and the distances the manifest gives `scale` and `offset`: value = offset + scale × stored. The other layers store class codes listed in the manifest.
@@ -132,6 +198,8 @@ metres = layer["offset"] + layer["scale"] * depth[row * ncols + col]  # if the s
 ## Limits
 
 - **Not for navigation.** The charts say so and so does the site.
-- A 100 m cell is a mean over a hectare, and slope, roughness and the habitat index are worked out on those. The drawing grid shows features down to about 40 m where the LiDAR or the multibeam measured them; a pinnacle or a hole smaller than that does not show.
+- A 100 m cell is a mean over a hectare, and slope, roughness and the habitat index are worked out on those. The drawing grid shows features down to about 40 m where the LiDAR or the multibeam measured them; a pinnacle or a hole smaller than that does not show in the depth colours. The relief shows shapes down to a few metres across where the LiDAR measured them, and about 40 m where only the multibeam did.
+- The relief is a picture, not a measurement. Heights are exaggerated eight times, steep ground is dark whichever way it faces, and unshaded water is not flat water: it may be charted water, where the shape is not known.
+- Rough ground is not a bottom type. Sand waves and channel edges are rough, and a flat rock platform is smooth.
 - Away from the LiDAR and the multibeam, depth is drawn between charted soundings: about a third of the water. About 8% rests on surveys of 1955 to 1962, mostly a strip between the LiDAR and the multibeam in the south of the bay and a patch north of Bream Head.
 - Bottom type away from charted rock is only as good as a 2010 habitat map compiled at a coarse scale.
