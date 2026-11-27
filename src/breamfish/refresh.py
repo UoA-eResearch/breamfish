@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from breamfish import publish
-from breamfish.sources import linz_tides, openmeteo
+from breamfish.sources import cluster_wind, linz_tides, openmeteo
 
 
 def log(text: str) -> None:
@@ -50,6 +50,7 @@ def run(data_dir: Path, get, now=None) -> int:
     marine = openmeteo.fetch_marine(get, cache_dir, now)
     tide = linz_tides.fetch_events(get, cache_dir, hours[0], hours[-1], now)
     field = openmeteo.fetch_wind_field(get, cache_dir, now)
+    fine = cluster_wind.fetch(get, cache_dir, now)  # None unless an address is configured
 
     if forecast["data"] is not None and not has_wind(forecast["data"], hours):
         message = "no wind values for the next seven days"
@@ -64,6 +65,11 @@ def run(data_dir: Path, get, now=None) -> int:
         ("linz_tides", "LINZ tide predictions", tide),
         ("openmeteo_wind_field", "Open-Meteo wind field", field),
     ]
+    if fine is not None:
+        if fine["data"] is not None and not any(t in fine["data"]["hours"] for t in hours):
+            message = "the newest run holds no hour of the next seven days"
+            fine = {"data": None, "fetched_at": None, "stale": False, "message": message}
+        sources.append(("cluster_wind", "Our own 1 km wind forecast", fine))
     for source_id, _, result in sources:
         log(summary(source_id, result))
 
@@ -79,5 +85,14 @@ def run(data_dir: Path, get, now=None) -> int:
         publish.write_json(published_dir / "wind.json", document)
     else:
         log("wind.json left as it was: no usable wind field")
-    publish.write_json(published_dir / "status.json", publish.build_status(now, sources))
+    # And for the fine wind, when there is one. It is optional: the map draws the
+    # public forecast without it, so its trouble is reported but is not the site's.
+    if fine is not None:
+        if fine["data"] is not None:
+            document = publish.build_fine_wind(now, fine["data"], fine["fetched_at"])
+            publish.write_json(published_dir / "wind_fine.json", document)
+        else:
+            log("wind_fine.json left as it was: no usable run from the cluster")
+    status = publish.build_status(now, sources, optional=("cluster_wind",))
+    publish.write_json(published_dir / "status.json", status)
     return 0 if forecast["data"] is not None else 1
