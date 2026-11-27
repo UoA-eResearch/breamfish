@@ -147,6 +147,8 @@ export interface SeabedManifest {
     roughness: ScaledLayer;
     bottom: ClassLayer;
     bottom_source: ClassLayer;
+    /** Written by scripts/build_relief.py; absent until that has been run. */
+    fine_roughness?: ScaledLayer & { bands_m: number[]; reading: string };
   };
   quality: { code: number; key: string; label: string; detail?: string; cells: number }[];
   /** The same depth merge on a finer grid, for drawing only. */
@@ -164,6 +166,33 @@ export interface SeabedManifest {
     bottom_source: { file: string; dtype: "uint8" };
   };
   contours: { file: string; levels_m: number[]; note: string };
+  /** Shaded relief, as raster tile archives. Written by scripts/build_relief.py. */
+  relief?: {
+    built: string;
+    note: string;
+    tile_px: number;
+    exaggeration: number;
+    lights: { azimuth_deg: number; altitude_deg: number; weight: number }[];
+    /** In the order they are drawn. */
+    archives: ReliefArchive[];
+  };
+}
+
+export interface ReliefArchive {
+  key: string;
+  /** A PMTiles archive on this site. */
+  url: string;
+  /** Changes when the archive does; sent with the address so no stale piece is read. */
+  version: string;
+  tiles: number;
+  bytes: number;
+  min_zoom: number;
+  max_zoom: number;
+  cell_m: number;
+  smooth_m: number;
+  name: string;
+  url_source: string;
+  licence: string;
 }
 
 // --- Habitat index ----------------------------------------------------------------

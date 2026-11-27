@@ -1,7 +1,8 @@
 // The map: a self-hosted OpenStreetMap basemap of the bay, the snapper habitat
-// index, the seabed layers (depth, how sure the depth is, bottom type,
-// contours), the forecast wind drawn moving, the no-take marine reserve, boat
-// ramps, and one tappable marker per forecast zone.
+// index, the seabed layers (depth, how sure the depth is, bottom type, rough
+// ground, contours), shaded relief where the depth was measured, the forecast
+// wind drawn moving, the no-take marine reserve, boat ramps, and one tappable
+// marker per forecast zone.
 
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import * as maplibregl from "maplibre-gl";
@@ -12,7 +13,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
 import { comfortClass } from "./comfort";
-import type { SeabedManifest, Season, Style, VectorField } from "./data";
+import type { ReliefArchive, SeabedManifest, Season, Style, VectorField } from "./data";
 import { FLOW_BANDS, FlowLayer } from "./flow";
 import { Habitat, type HabitatPoint } from "./habitat";
 import type { Rgba } from "./paint";
@@ -31,6 +32,8 @@ const TILE_SCHEME = "seabed";
 const TILE_SIZE = 256;
 /** Zoomed in past this, a screen pixel is finer than the 100 m grid can fill: fetch the 20 m one. */
 const DRAWING_FROM_ZOOM = 10.5;
+/** How strongly the shaded relief is laid over the water: enough to read, not enough to hide a colour. */
+const RELIEF_OPACITY = 0.6;
 
 /**
  * The basemap's layers, with the sea moved underneath the land. As Protomaps
@@ -58,6 +61,7 @@ const OVERLAYS: { id: OverlayChoice; label: string }[] = [
   { id: "depth", label: "Depth" },
   { id: "quality", label: "How sure the depth is" },
   { id: "bottom", label: "Bottom type" },
+  { id: "rough", label: "Rough ground" },
   { id: "none", label: "None" },
 ];
 
@@ -79,7 +83,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, text = "", className 
 }
 
 /** What a tap on the water says. Everything in it comes from the seabed grids as built. */
-function describeSpot(point: SeabedPoint): HTMLElement {
+function describeSpot(point: SeabedPoint, reading = ""): HTMLElement {
   const box = el("div", "", "spot");
   const measured = point.quality.key === "measured";
   const metres = measured ? Math.abs(point.depth).toFixed(1) : Math.abs(point.depth).toFixed(0);
@@ -104,6 +108,9 @@ function describeSpot(point: SeabedPoint): HTMLElement {
   } else {
     row("Slope", `${point.slope.toFixed(1)}°`);
     row("Roughness", `${point.roughness.toFixed(2)} m`, "How much the depth varies across this 100 m cell.");
+  }
+  if (point.roughGround != null) {
+    row("Rough ground", `${point.roughGround.toFixed(2)} m`, `Over 10 m, in the roughest patches of this cell. ${reading}`.trim());
   }
   box.append(rows, el("p", "Add the tide height for the depth now. Not for navigation.", "spot-note"));
   return box;
@@ -180,6 +187,9 @@ export class BayMap {
   /** The forecast wind, drawn moving over everything else. */
   private flow: FlowLayer;
   private wind = stored("wind") !== "off";
+  /** Shaded relief over the water, where the depth was measured. */
+  private relief = stored("relief") !== "off";
+  private reliefLayers: string[] = [];
   /** Which picture each painted source is showing now, by source id. */
   private showing = new Map<string, string>();
   private renderControl: () => void = () => {};
@@ -292,7 +302,9 @@ export class BayMap {
         // One level past the map's closest zoom, so the closest view is painted, not stretched.
         maxzoom: Math.ceil(map.getMaxZoom()) + 1,
       });
-      map.addLayer({ id, type: "raster", source: id, paint: { "raster-opacity": opacity, "raster-fade-duration": 0 } }, "contours");
+      // Under the shaded relief, which is under the contours, which are under the land.
+      const above = this.reliefLayers[0] ?? "contours";
+      map.addLayer({ id, type: "raster", source: id, paint: { "raster-opacity": opacity, "raster-fade-duration": 0 } }, above);
     } else if (this.showing.get(id) !== layer) {
       map.getSource<maplibregl.RasterTileSource>(id)?.setTiles(this.tiles(layer));
     }
@@ -332,6 +344,7 @@ export class BayMap {
       console.error(error);
     }
     if (!this.habitat && this.overlay === "snapper") this.overlay = "depth";
+    if (!this.seabed.hasRoughGround && this.overlay === "rough") this.overlay = "depth";
     const map = this.map;
     const css = getComputedStyle(document.documentElement);
     const ink = css.getPropertyValue("--contour").trim() || "#0d366b";
@@ -367,12 +380,42 @@ export class BayMap {
       },
       this.underLand,
     );
+    this.addRelief(this.seabed.manifest.relief?.archives ?? []);
     // Under the zoom buttons on a wide screen; on a phone the top right is the free corner.
     const wide = window.matchMedia("(min-width: 860px)").matches;
     map.addControl(this.layerControl(this.seabed), wide ? "top-left" : "top-right");
     this.showSeabed();
     map.on("zoom", this.sharpenOnZoom);
     this.sharpen();
+  }
+
+  /**
+   * The shaded relief: pictures of light and shadow made by scripts/build_relief.py,
+   * read from archives on this site through the same protocol as the basemap. They
+   * go under the contours, and every painted layer is put under them in turn.
+   */
+  private addRelief(archives: ReliefArchive[]): void {
+    const map = this.map;
+    const tileSize = this.seabed?.manifest.relief?.tile_px ?? TILE_SIZE;
+    for (const archive of archives) {
+      const id = `relief-${archive.key}`;
+      map.addSource(id, {
+        type: "raster",
+        url: `pmtiles://${window.location.origin}${archive.url}?v=${archive.version}`,
+        tileSize,
+      });
+      map.addLayer(
+        {
+          id,
+          type: "raster",
+          source: id,
+          layout: { visibility: this.relief ? "visible" : "none" },
+          paint: { "raster-opacity": RELIEF_OPACITY, "raster-fade-duration": 0 },
+        },
+        "contours",
+      );
+      this.reliefLayers.push(id);
+    }
   }
 
   /** Show the chosen layer, adding it to the map the first time it is asked for. */
@@ -391,6 +434,9 @@ export class BayMap {
     else if (this.overlay !== "none") this.paintedLayer(`seabed-${this.overlay}`, this.overlay, 0.8);
     for (const id of ["contours", "contours-label"]) {
       map.setLayoutProperty(id, "visibility", this.contours ? "visible" : "none");
+    }
+    for (const id of this.reliefLayers) {
+      map.setLayoutProperty(id, "visibility", this.relief ? "visible" : "none");
     }
   }
 
@@ -478,6 +524,7 @@ export class BayMap {
     const note = el("p", "", "layers-note");
     const windKey = el("ul", "", "layers-key layers-wind");
     const windNote = el("p", "", "layers-note");
+    const reliefNote = el("p", manifest.relief?.note ?? "", "layers-note");
 
     const swatch = (name: string, label: string) => {
       const item = el("li", label);
@@ -545,10 +592,20 @@ export class BayMap {
           key.append(swatch(name, name === "--bottom-coarse" ? "Shell, gravel or coarse sediment" : cls.label));
         }
         note.textContent = "From charts and a coarse habitat map. Uncoloured water is not mapped.";
+      } else if (this.overlay === "rough" && manifest.layers.fine_roughness) {
+        const { bands_m: bands, reading } = manifest.layers.fine_roughness;
+        const metres = (value: number) => value.toFixed(2);
+        key.append(
+          swatch("--rough-0", `Under ${metres(bands[0])} m`),
+          ...bands.slice(1).map((upTo, i) => swatch(`--rough-${i + 1}`, `${metres(bands[i])} to ${metres(upTo)} m`)),
+          swatch(`--rough-${bands.length}`, `Over ${metres(bands[bands.length - 1])} m`),
+        );
+        note.textContent = `How uneven the bottom is over 10 m, in the roughest patches of each 100 m square, where LiDAR measured the depth. A hint of reef, not a bottom type. ${reading}`;
       } else {
         note.textContent = "Tap the water for depth and bottom type.";
       }
 
+      reliefNote.hidden = !this.relief;
       windKey.replaceChildren();
       windKey.hidden = !this.wind || !this.flow.available;
       windNote.hidden = !this.wind;
@@ -574,6 +631,7 @@ export class BayMap {
     choices.append(el("legend", "Colour the water by", "visually-hidden"));
     for (const { id, label } of OVERLAYS) {
       if (id === "snapper" && !this.habitat) continue;
+      if (id === "rough" && !seabed.hasRoughGround) continue;
       const input = el("input");
       input.type = "radio";
       input.name = "seabed-overlay";
@@ -600,6 +658,18 @@ export class BayMap {
     const linesRow = el("label", "", "layers-contours");
     linesRow.append(lines, "Depth contours");
 
+    const shading = el("input");
+    shading.type = "checkbox";
+    shading.checked = this.relief;
+    shading.addEventListener("change", () => {
+      this.relief = shading.checked;
+      store("relief", shading.checked ? "on" : "off");
+      this.showSeabed();
+      render();
+    });
+    const shadingRow = el("label", "", "layers-contours");
+    shadingRow.append(shading, "Seabed relief");
+
     const wind = el("input");
     wind.type = "checkbox";
     wind.checked = this.wind;
@@ -612,7 +682,9 @@ export class BayMap {
     const windRow = el("label", "", "layers-contours");
     windRow.append(wind, "Wind");
 
-    box.append(summary, choices, seasons, linesRow, key, note, windRow, windKey, windNote);
+    box.append(summary, choices, seasons, linesRow, key, note);
+    if (this.reliefLayers.length) box.append(shadingRow, reliefNote);
+    box.append(windRow, windKey, windNote);
     this.renderControl = render;
     render();
     return { onAdd: () => box, onRemove: () => box.remove() };
@@ -694,7 +766,7 @@ export class BayMap {
       }
       const habitat = this.overlay === "snapper" ? this.habitat : null;
       const rating = el("div");
-      if (spot) content.append(rating, describeSpot(spot));
+      if (spot) content.append(rating, describeSpot(spot, this.seabed?.manifest.layers.fine_roughness?.reading));
       popup.setDOMContent(content).addTo(map);
       // Once it has been laid out, so its real size and place are known.
       requestAnimationFrame(() => this.reveal(popup));
