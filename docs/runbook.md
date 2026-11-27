@@ -66,6 +66,15 @@ echo | openssl s_client -connect breamfishing.sonka.cloud.edu.au:443 2>/dev/null
 
 **A deploy did not arrive.** Check that CI passed and that `release` moved, then run the agent with `--test` and read its output. The dependency install is hash-checked and will refuse a wheel that does not match `requirements.txt`.
 
+## The fine wind forecast (on trial)
+
+A 1 km wind forecast is run once a day on a separate cluster and published to a public object-store address. The pipeline fetches it only when `/etc/breamfish/env` holds `BREAMFISH_FINE_WIND_URL`, which Puppet writes from `site::profile::breamfish::fine_wind_url` in the node's Hiera file. Remove that key and the pipeline stops looking.
+
+- It is published as `/data/wind_fine.json`, and listed in `status.json` with `"optional": true`. Its being down never marks the site as stale.
+- The map draws it only in a browser that has opened the site with `?fine=1`. `?fine=0` turns it off again.
+- A run made more than 36 hours ago is not published, however recently it was fetched: that means the cluster has stopped.
+- The cluster's own state: `curl -s <the address, with wind/status.json in place of wind/latest.json>`. Its configuration and runbook are not in this repo.
+
 ## Network
 
 The site needs TCP 80 and 443 open from the internet (80 for certificate renewal and the redirect) and nothing else inbound except SSH. On OpenStack that is one security group:

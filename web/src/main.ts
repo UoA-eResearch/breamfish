@@ -11,6 +11,16 @@ const STALE_MS = 2 * 3_600_000;
 /** A wind field fetched longer ago than this is not drawn. The pipeline will not publish one older either. */
 const WIND_STALE_MS = 12 * 3_600_000;
 const WIDE = window.matchMedia("(min-width: 860px)");
+/**
+ * Our own 1 km wind forecast is on trial until it has been checked against measured wind.
+ * It is drawn only in a browser that has opened the site with ?fine=1 (and until ?fine=0).
+ */
+const FINE_WIND = (() => {
+  const asked = new URLSearchParams(window.location.search).get("fine");
+  if (asked === "1") store("fineWind", "on");
+  if (asked === "0") store("fineWind", "off");
+  return stored("fineWind") === "on";
+})();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const esc = (text: string): string =>
@@ -224,7 +234,8 @@ function renderFreshness(): void {
   if (!model) return;
   const now = Date.now();
   const generated = Date.parse(model.conditions.generated_at);
-  const troubled = (model.status?.sources ?? []).filter((s) => !s.ok || s.stale).map((s) => s.name);
+  // A source the site is whole without is listed below, but does not mark the site as stale.
+  const troubled = (model.status?.sources ?? []).filter((s) => !s.optional && (!s.ok || s.stale)).map((s) => s.name);
   const old = now - generated > STALE_MS;
   badge.dataset.state = old ? "bad" : troubled.length ? "warn" : "ok";
   // The prefix is dropped on narrow screens, where only the essentials fit.
@@ -238,7 +249,7 @@ function renderFreshness(): void {
     .map((s) => {
       const state = !s.ok ? "unavailable" : s.stale ? "using an older copy" : "up to date";
       const fetched = s.fetched_at ? `, fetched ${ago(Date.parse(s.fetched_at), now)}` : "";
-      return `<li>${esc(s.name)}: ${state}${fetched}</li>`;
+      return `<li>${esc(s.name)}${s.optional ? " (on trial)" : ""}: ${state}${fetched}</li>`;
     })
     .join("");
   $("source-status").innerHTML = list ? `<h3>Data status</h3><ul>${list}</ul>` : "";
@@ -372,8 +383,12 @@ async function refresh(): Promise<void> {
       // The map draws the wind if it can. Everything else works without it.
       loadJson<VectorField>("/data/wind.json").catch(() => null),
     ]);
-    const fresh = wind !== null && wind.schema === 1 && Date.now() - Date.parse(wind.fetched_at) < WIND_STALE_MS;
-    bayMap.setWind(fresh ? wind : null);
+    const fresh = (field: VectorField | null) =>
+      field !== null && field.schema === 1 && Date.now() - Date.parse(field.fetched_at) < WIND_STALE_MS;
+    bayMap.setWind(fresh(wind) ? wind : null);
+    // Our own finer forecast is on trial: it is fetched and drawn only where it has been asked for.
+    const fine = FINE_WIND ? await loadJson<VectorField>("/data/wind_fine.json").catch(() => null) : null;
+    bayMap.setFineWind(fresh(fine) ? fine : null);
     const times = conditions.hours.map((h) => Date.parse(h));
     const now = Date.now();
     let nowIndex = 0;

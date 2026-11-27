@@ -75,7 +75,8 @@ export interface VectorField {
   /** The same hours as conditions.json. */
   hours: string[];
   unit: string;
-  source: { id: string; name: string; cell_km: [number, number] };
+  /** cell_km is how far apart the grid's points are. A field from our own model also says how fine the model is, and which run it came from. */
+  source: { id: string; name: string; cell_km: [number, number]; model_km?: number; model?: string; cycle?: string; run_at?: string };
   grid: { nrows: number; ncols: number; lats: number[]; lons: number[][] };
   /** One list per hour, a value per grid point row by row from the north-west; null for an hour with none. */
   u: (Series | null)[];
@@ -89,6 +90,8 @@ export interface SourceStatus {
   stale: boolean;
   fetched_at: string | null;
   message: string;
+  /** Set on a source the site is whole without. Its trouble is listed but is not the site's. */
+  optional?: boolean;
 }
 
 export interface Status {

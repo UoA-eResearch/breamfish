@@ -506,11 +506,18 @@ export class BayMap {
     this.renderControl();
   }
 
+  /** Our own finer forecast, for the hours it has; null to draw the public one alone. */
+  setFineWind(field: VectorField | null): void {
+    this.flow.setFine(field);
+    this.renderControl();
+  }
+
   /** The hour the panel is showing, as written in the published files: the wind follows it. */
   setHour(iso: string): void {
     const had = this.flow.available;
+    const from = this.flow.source?.id;
     this.flow.setHour(iso);
-    if (had !== this.flow.available) this.renderControl();
+    if (had !== this.flow.available || from !== this.flow.source?.id) this.renderControl();
   }
 
   /** The layer picker and its key, as a map control under the zoom buttons. */
@@ -621,9 +628,15 @@ export class BayMap {
           item.prepend(line);
           windKey.append(item);
         }
-        // The forecast knows nothing finer than its own squares. Say how big they are.
-        const squares = cell ? ` in squares about ${Math.round(cell[0])} by ${Math.round(cell[1])} km` : "";
-        windNote.textContent = `Forecast wind for the hour shown in the panel: faster, longer and heavier is stronger. The forecast works${squares}, so it does not show shelter close under the hills.`;
+        const source = this.flow.source;
+        if (source?.model_km != null) {
+          // Our own run, on trial. Say so, and say what it has not been through.
+          windNote.textContent = `On trial: our own forecast for this hour, worked out in ${source.model_km} km squares. It has not yet been checked against measured wind, and hills narrower than a few kilometres are still too small for it. Faster, longer and heavier is stronger.`;
+        } else {
+          // The forecast knows nothing finer than its own squares. Say how big they are.
+          const squares = cell ? ` in squares about ${Math.round(cell[0])} by ${Math.round(cell[1])} km` : "";
+          windNote.textContent = `Forecast wind for the hour shown in the panel: faster, longer and heavier is stronger. The forecast works${squares}, so it does not show shelter close under the hills.`;
+        }
       }
     };
 
