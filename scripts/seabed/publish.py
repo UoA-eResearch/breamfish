@@ -38,6 +38,8 @@ DEPTH = Scaling("uint16", 0.1, -10.0)
 SLOPE = Scaling("uint8", 0.25, -0.25)
 # Roughness to 2 cm, 0 to 5.08 m; rougher is stored as 5.08.
 ROUGHNESS = Scaling("uint8", 0.02, -0.02)
+# Rough ground (roughness over 10 m, from the 2 m LiDAR) to 1 cm, 0 to 2.54 m.
+FINE_ROUGHNESS = Scaling("uint8", 0.01, -0.01)
 # Distance to the nearest reef to 25 m, 0 to 6,350 m; farther is stored as 6,350.
 REEF_DISTANCE = Scaling("uint8", 25.0, -25.0)
 # Distance to the mainland shore to 50 m, 0 to 12,700 m; farther is stored as 12,700.
