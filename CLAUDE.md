@@ -22,7 +22,7 @@ python3 scripts/fetch_habitat_points.py   # refresh the snapper records the inde
 
 - `src/breamfish/`: pipeline. `config.py` holds zones and every threshold; `publish.py` defines the JSON the frontend reads.
 - `web/src/data.ts`: the TypeScript mirror of that JSON. Change both sides together.
-- `wind_fine.json` (`publish.build_fine_wind`, `sources/cluster_wind.py`): our own 1 km wind forecast, run on a cluster and fetched from the address in `BREAMFISH_FINE_WIND_URL`. Optional and on trial: with no address the source does not exist, and the site draws it only with `?fine=1`. The same `VectorField` shape, so `flow.ts` draws either.
+- `wind_fine.json` (`publish.build_fine_wind`, `sources/cluster_wind.py`): our own 1 km wind forecast, run on a cluster and fetched from the address in `BREAMFISH_FINE_WIND_URL`. Optional and on trial: with no address the source does not exist. The site draws it for the hours it has, labelled as on trial; `?fine=0` hides it. The same `VectorField` shape, so `flow.ts` draws either.
 - `wind.json` (`publish.build_wind`, `VectorField` in `data.ts`): the forecast wind at a lattice of model cells, set out in `config.WIND_LATTICE`. `web/src/flow.ts` draws it moving over the map and can draw any field published in that shape.
 - `web/public/`: committed static assets (tiles, fonts, sprites, layers, the seabed grids).
 - `scripts/seabed/` and `scripts/build_seabed.py`: the hand-run seabed build, described in [docs/seabed.md](docs/seabed.md). `web/src/seabed.ts` reads what `scripts/seabed/publish.py` writes; change both sides together.
