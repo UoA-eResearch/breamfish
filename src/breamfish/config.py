@@ -66,6 +66,15 @@ WIND_FIELD_FIELDS = [
     ("direction", "wind_direction_10m", 0),
 ]
 
+# The fine wind: a 1 km forecast run on our own cluster and published where the
+# server can fetch it. Optional. The address arrives in this environment variable;
+# without it the source does not exist. See sources/cluster_wind.py.
+FINE_WIND_ENV = "BREAMFISH_FINE_WIND_URL"
+# The cluster runs once a day. A run older than this means it has stopped.
+FINE_WIND_MAX_AGE = timedelta(hours=36)
+# No wind here is stronger than this; a larger number is a broken file.
+FINE_WIND_MAX_KN = 150
+
 # One file per calendar year. Times in it are New Zealand local time.
 TIDE_URL = (
     "https://static.charts.linz.govt.nz/tide-tables/maj-ports/csv/Marsden%20Point%20{year}.csv"

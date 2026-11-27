@@ -21,6 +21,23 @@ Things to know about these:
 - **Tide times are local.** The LINZ CSV header says "Local Std or Daylight Time". The pipeline converts to UTC; a slip here is a one-hour error for half the year.
 - **The tide curve is interpolated** between predicted highs and lows with a cosine. Good to a few centimetres mid-tide, not a harmonic prediction.
 
+## On trial: our own 1 km wind forecast
+
+Not shown to everyone. See "Where a cluster helps" in [roadmap.md](roadmap.md).
+
+| Source | Used for | Access | Licence and attribution |
+|---|---|---|---|
+| [NOAA GFS](https://www.nco.ncep.noaa.gov/pmb/products/gfs/), 0.25° global forecast | What the regional model starts from and is steered by at its edges | NOAA's filter service, `nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl`, no key: a box around New Zealand, every three hours to 72 hours, about 7 MB a file | Public domain (US Government work); NOAA asks to be credited |
+| [WRF](https://github.com/wrf-model/WRF) 4.8.1, run on the vhpc cluster | The 10 m wind at 1 km around the bay, hourly to 72 hours | Published by the cluster to a public object-store address; the server is told the address in `BREAMFISH_FINE_WIND_URL` | The model is public domain (UCAR). The forecast is ours. |
+| WRF's static geographic data | The model's terrain and land use | Fetched once to the cluster | Various public sources, listed by UCAR. Terrain is GMTED2010 at 30 arc-seconds, about 900 m. |
+
+Things to know about these:
+
+- **Probed 28 November 2026.** Twenty-five GFS files for one forecast (171 MB) came down in 86 seconds, eight at a time. From the cluster a single connection overseas runs at about 0.1 MB/s, but connections do not slow each other.
+- **The terrain is coarser than the model.** At 1 km the model's own terrain puts Bream Head at 116 m; it is about 470 m. Finer terrain data would help a little, but a ridge that narrow needs a model finer than 1 km.
+- **The lattice the site draws is 0.02°** (about 2.2 by 1.8 km), read off the 1 km model by interpolation. A model shows nothing finer than several of its own cells.
+- **Nothing here is a second opinion yet.** WRF is steered by GFS; the wind the site draws for everyone is a different forecast. Where they agree is not independent evidence that either is right.
+
 ## In use (stage 1, the seabed layers)
 
 These are fetched once by `scripts/build_seabed.py` on a development machine, not by the server. The grids built from them are committed under `web/public/seabed/`. Method and datum handling are in [seabed.md](seabed.md); the numbers for the committed build are in [seabed-report.md](seabed-report.md). All were fetched on 26 November 2026.

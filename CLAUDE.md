@@ -22,6 +22,7 @@ python3 scripts/fetch_habitat_points.py   # refresh the snapper records the inde
 
 - `src/breamfish/`: pipeline. `config.py` holds zones and every threshold; `publish.py` defines the JSON the frontend reads.
 - `web/src/data.ts`: the TypeScript mirror of that JSON. Change both sides together.
+- `wind_fine.json` (`publish.build_fine_wind`, `sources/cluster_wind.py`): our own 1 km wind forecast, run on a cluster and fetched from the address in `BREAMFISH_FINE_WIND_URL`. Optional and on trial: with no address the source does not exist, and the site draws it only with `?fine=1`. The same `VectorField` shape, so `flow.ts` draws either.
 - `wind.json` (`publish.build_wind`, `VectorField` in `data.ts`): the forecast wind at a lattice of model cells, set out in `config.WIND_LATTICE`. `web/src/flow.ts` draws it moving over the map and can draw any field published in that shape.
 - `web/public/`: committed static assets (tiles, fonts, sprites, layers, the seabed grids).
 - `scripts/seabed/` and `scripts/build_seabed.py`: the hand-run seabed build, described in [docs/seabed.md](docs/seabed.md). `web/src/seabed.ts` reads what `scripts/seabed/publish.py` writes; change both sides together.
@@ -36,6 +37,7 @@ python3 scripts/fetch_habitat_points.py   # refresh the snapper records the inde
 - **The browser calls nobody but this site.** All sources are fetched server-side and republished. No CDN scripts, fonts or tiles. The nginx Content-Security-Policy enforces this, so a third-party URL will simply break.
 - **No runtime dependence on an LLM or any paid API.** Anything of that kind is an optional batch step that is skipped cleanly when no key is present.
 - **The formula lives in Python only.** The frontend displays what the pipeline computed; it never recomputes a rating or score.
+- **The site never depends on the cluster.** What the cluster publishes is read as something that may be late, missing or wrong: checked value by value, dropped when old, and always with the public forecast to fall back on. An optional source is marked `optional` in `status.json` and does not count towards `ok`.
 - **Publish atomically and never replace good data with nothing.** Keep `status.json` honest about stale or failed sources.
 - **Call it what it is.** Ratings are "comfort" for conditions; the fish layer is a "habitat index", never a catch probability or a forecast. No solunar tables, moon phase or barometric pressure as inputs.
 - **Every number in a species file says where it comes from.** A curve has a `basis` (what is published) and a `judgement` (what was decided here); evidence cites a reference that says how much of it was read. Do not add a figure from memory: read the source, or mark it as judgement.

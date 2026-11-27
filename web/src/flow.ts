@@ -41,7 +41,10 @@ const band = (speed: number): number => FLOW_BANDS.findIndex((b) => speed < b.un
 export class FlowLayer {
   private canvas = document.createElement("canvas");
   private ctx = this.canvas.getContext("2d")!;
+  /** The field being drawn for the hour shown: the finer one where it has that hour, else the other. */
   private field: VectorField | null = null;
+  private coarse: VectorField | null = null;
+  private fine: VectorField | null = null;
   private hour = "";
   private u: (number | null)[] | null = null;
   private v: (number | null)[] | null = null;
@@ -85,8 +88,20 @@ export class FlowLayer {
     return this.field?.source.cell_km ?? null;
   }
 
+  /** What made the field being drawn, or null when there is none. */
+  get source(): VectorField["source"] | null {
+    return this.field?.source ?? null;
+  }
+
+  /** The field that covers every hour: the public forecast. */
   setField(field: VectorField | null): void {
-    this.field = field;
+    this.coarse = field;
+    this.pick();
+  }
+
+  /** A finer field for the hours it has. Where it has none, the other is drawn. */
+  setFine(field: VectorField | null): void {
+    this.fine = field;
     this.pick();
   }
 
@@ -104,12 +119,25 @@ export class FlowLayer {
   }
 
   private pick(): void {
-    const i = this.field ? this.field.hours.indexOf(this.hour) : -1;
     const was = this.available;
-    this.u = i < 0 ? null : (this.field!.u[i] ?? null);
-    this.v = i < 0 ? null : (this.field!.v[i] ?? null);
-    // Moving streaks pick up the new hour on their next step. Anything else is drawn afresh.
-    if (was !== this.available || this.isStill) this.restart();
+    const before = this.field;
+    this.field = null;
+    this.u = null;
+    this.v = null;
+    for (const candidate of [this.fine, this.coarse]) {
+      const i = candidate ? candidate.hours.indexOf(this.hour) : -1;
+      const u = i < 0 ? null : (candidate!.u[i] ?? null);
+      const v = i < 0 ? null : (candidate!.v[i] ?? null);
+      if (u && v) {
+        this.field = candidate;
+        this.u = u;
+        this.v = v;
+        break;
+      }
+    }
+    // Moving streaks pick up a new hour of the same field on their next step.
+    // Anything else, another field's grid included, is drawn afresh.
+    if (was !== this.available || before !== this.field || this.isStill) this.restart();
   }
 
   private get isStill(): boolean {

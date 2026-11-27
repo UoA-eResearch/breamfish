@@ -220,8 +220,42 @@ def build_wind(now, field: dict, fetched_at) -> dict:
     }
 
 
-def build_status(now, sources: list) -> dict:
-    """The status.json document. sources is a list of (id, name, fetch result)."""
+def build_fine_wind(now, run: dict, fetched_at) -> dict:
+    """The wind_fine.json document: the cluster's 1 km forecast, in wind.json's shape.
+
+    run is cluster_wind.parse's result. Its hours are laid onto the hours of
+    conditions.json, so the site can use either file for an hour without caring
+    which; an hour the run does not reach is null.
+    """
+    hours = window(now)
+    at = {t: n for n, t in enumerate(run["hours"])}
+    return {
+        "schema": 1,
+        "generated_at": iso_second(now),
+        "fetched_at": iso_minute(fetched_at),
+        "hours": [iso_minute(t) for t in hours],
+        "unit": "kn",
+        "source": {
+            "id": "cluster_wind",
+            "name": "Our own 1 km forecast",
+            "cell_km": run["cell_km"],
+            "model_km": run["model_km"],
+            "model": run["model"],
+            "cycle": run["cycle"],
+            "run_at": iso_minute(run["generated_at"]),
+        },
+        "grid": run["grid"],
+        "u": [run["u"][at[t]] if t in at else None for t in hours],
+        "v": [run["v"][at[t]] if t in at else None for t in hours],
+    }
+
+
+def build_status(now, sources: list, optional: tuple = ()) -> dict:
+    """The status.json document. sources is a list of (id, name, fetch result).
+
+    A source whose id is in optional is reported like any other and marked so, and
+    does not count towards "ok": the site is whole without it.
+    """
     entries = [
         {
             "id": source_id,
@@ -231,10 +265,11 @@ def build_status(now, sources: list) -> dict:
             "fetched_at": iso_minute(result["fetched_at"]) if result["fetched_at"] else None,
             "message": result["message"],
         }
+        | ({"optional": True} if source_id in optional else {})
         for source_id, name, result in sources
     ]
     return {
         "generated_at": iso_second(now),
-        "ok": all(entry["ok"] for entry in entries),
+        "ok": all(entry["ok"] for entry in entries if not entry.get("optional")),
         "sources": entries,
     }

@@ -63,7 +63,9 @@ It does not help the website or the hourly pipeline, which take seconds on one s
 2. **A nearshore wave lookup table** (SWAN, as a job array over offshore height, period and direction), because the public wave forecast stops several kilometres offshore.
 3. **A daily wind forecast at about 1 km** (decided 27 November 2026). The public forecast works in squares about 8 by 10 km, four or five across the bay, and cannot show the shelter under Bream Head or Manaia. A regional weather model nested down to the bay could. It writes a `wind.json` of the shape the site already reads, so nothing on the site changes. The Open-Meteo lattice stays as the fallback: the site must never depend on the cluster having run. It has to be checked against wind measured at Marsden Point before it is shown.
 
-The cluster as built is small and has no weather software on it, so the daily job starts with sizing it. How results reach the web server is not built yet. The intent is small versioned files that the web server pulls.
+The first of these is built, on trial (28 November 2026). The cluster runs the WRF weather model over three nested areas, down to 1 km around the bay, for 72 hours ahead, once a day, from the public GFS forecast. One 32-core node takes about 70 minutes. It publishes the 10 m wind to a public object-store address; the web server fetches it there, so the two never need a network path to each other. The pipeline reads it only when the server has been given the address (`BREAMFISH_FINE_WIND_URL`), and the site draws it only in a browser that asks with `?fine=1`.
+
+**It is not shown to everyone until it has been checked** against measured wind for at least two weeks, and is no worse there than the public forecast. Two things are already known about it. At 1 km a ridge as narrow as Bream Head is still flattened: the model's terrain puts it at 116 m, and it is about 470 m. And the first run agreed with the public forecast to within about 1 knot and 25 degrees at the three zone points, which says it is not wrong and not yet that it is better.
 
 ## Where a language model might help, and where it must not
 
