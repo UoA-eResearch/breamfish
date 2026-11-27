@@ -12,14 +12,14 @@ const STALE_MS = 2 * 3_600_000;
 const WIND_STALE_MS = 12 * 3_600_000;
 const WIDE = window.matchMedia("(min-width: 860px)");
 /**
- * Our own 1 km wind forecast is on trial until it has been checked against measured wind.
- * It is drawn only in a browser that has opened the site with ?fine=1 (and until ?fine=0).
+ * Our own 1 km wind forecast is drawn wherever it has the hour, labelled as on trial until it
+ * has been checked against measured wind. ?fine=0 hides it in this browser, ?fine=1 shows it again.
  */
 const FINE_WIND = (() => {
   const asked = new URLSearchParams(window.location.search).get("fine");
   if (asked === "1") store("fineWind", "on");
   if (asked === "0") store("fineWind", "off");
-  return stored("fineWind") === "on";
+  return stored("fineWind") !== "off";
 })();
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -386,7 +386,7 @@ async function refresh(): Promise<void> {
     const fresh = (field: VectorField | null) =>
       field !== null && field.schema === 1 && Date.now() - Date.parse(field.fetched_at) < WIND_STALE_MS;
     bayMap.setWind(fresh(wind) ? wind : null);
-    // Our own finer forecast is on trial: it is fetched and drawn only where it has been asked for.
+    // Our own finer forecast, on trial. Not fetched in a browser that has asked to hide it.
     const fine = FINE_WIND ? await loadJson<VectorField>("/data/wind_fine.json").catch(() => null) : null;
     bayMap.setFineWind(fresh(fine) ? fine : null);
     const times = conditions.hours.map((h) => Date.parse(h));

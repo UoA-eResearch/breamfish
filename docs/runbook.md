@@ -71,7 +71,7 @@ echo | openssl s_client -connect breamfishing.sonka.cloud.edu.au:443 2>/dev/null
 A 1 km wind forecast is run once a day on a separate cluster and published to a public object-store address. The pipeline fetches it only when `/etc/breamfish/env` holds `BREAMFISH_FINE_WIND_URL`, which Puppet writes from `site::profile::breamfish::fine_wind_url` in the node's Hiera file. Remove that key and the pipeline stops looking.
 
 - It is published as `/data/wind_fine.json`, and listed in `status.json` with `"optional": true`. Its being down never marks the site as stale.
-- The map draws it only in a browser that has opened the site with `?fine=1`. `?fine=0` turns it off again.
+- The map draws it for every hour it covers, with a note that it is on trial. `?fine=0` hides it in that browser, `?fine=1` shows it again.
 - A run made more than 36 hours ago is not published, however recently it was fetched: that means the cluster has stopped.
 - The cluster's own state: `curl -s <the address, with wind/status.json in place of wind/latest.json>`. Its configuration and runbook are not in this repo.
 

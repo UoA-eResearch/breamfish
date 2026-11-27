@@ -23,7 +23,7 @@ Things to know about these:
 
 ## On trial: our own 1 km wind forecast
 
-Not shown to everyone. See "Where a cluster helps" in [roadmap.md](roadmap.md).
+Shown on the map, labelled as on trial. See "Where a cluster helps" in [roadmap.md](roadmap.md), and how it compares with measured wind in [wind-check.md](wind-check.md).
 
 | Source | Used for | Access | Licence and attribution |
 |---|---|---|---|
