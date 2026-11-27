@@ -112,6 +112,14 @@ uv run python scripts/build_seabed.py    # writes web/public/seabed/ and docs/se
 
 Sources are cached under `data/seabed/raw/`, so a second run needs no network. Read `docs/seabed-report.md` before committing: it compares the new grids with charted soundings. See [seabed.md](seabed.md).
 
+The shaded relief and the rough-ground layer are a second hand-run build, after the seabed's. It needs no key; its first run downloads 130 MB of 2 m LiDAR into the same cache:
+
+```bash
+uv run python scripts/build_relief.py    # writes web/public/tiles/relief_*.pmtiles, the rough-ground layer and its part of the report
+```
+
+It prints the size of the two archives, 16 MB together as committed. They are served from `/tiles/` like the basemap. Run it again after any seabed rebuild: the tests fail if the committed relief no longer matches the committed grids.
+
 The habitat index is built from the seabed grids and the species file, so rebuild it after either changes. It needs no key, no network and no extra libraries:
 
 ```bash
