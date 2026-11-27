@@ -53,6 +53,13 @@
   --bottom-coarse: #52514e;
   --bottom-soft: #c3c2b7;
 
+  /* Rough ground: grey where it is smooth, then one warm hue, pale to strong. */
+  --rough-0: #dddcd4;
+  --rough-1: #f4d9a6;
+  --rough-2: #f0b25c;
+  --rough-3: #d97a24;
+  --rough-4: #96400c;
+
   /* Snapper habitat: one hue, pale to strong from the lowest class to the
      highest, so the best water is what stands out. A hue no other layer uses.
      The veil greys out water a style of fishing does not reach. */
@@ -104,6 +111,11 @@
     --bottom-mud: #3987e5;
     --bottom-coarse: #f0efec;
     --bottom-soft: #898781;
+    --rough-0: #3a3a37;
+    --rough-1: #6b4413;
+    --rough-2: #a8641a;
+    --rough-3: #e09a3c;
+    --rough-4: #fbdc9c;
     /* On a dark map the best water is the brightest. */
     --habitat-1: #2b2749;
     --habitat-2: #453c80;

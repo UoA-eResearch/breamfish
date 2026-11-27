@@ -1,7 +1,8 @@
 // The seabed grids: depth, where each depth came from, slope, roughness and
 // bottom type on a 100 m grid, and the same depth on a 20 m grid for drawing.
 // They are static files written by scripts/build_seabed.py (the writer is
-// scripts/seabed/publish.py); nothing here measures or estimates anything.
+// scripts/seabed/publish.py), and rough ground by scripts/build_relief.py;
+// nothing here measures or estimates anything.
 // This module reads the files, answers "what is at this spot?" and paints a
 // layer one map tile at a time, at the resolution of the screen.
 
@@ -12,7 +13,7 @@ import { loadGrid as loadLayer, paintClasses, paintSteps, pastShore, tileFrame, 
 const BASE = "/seabed/";
 
 /** What the map can colour the water by. */
-export type Overlay = "depth" | "quality" | "bottom";
+export type Overlay = "depth" | "quality" | "bottom" | "rough";
 
 /** Depth bands in metres below chart datum. Each band is one step of the depth ramp. */
 export const DEPTH_BANDS: { upTo: number; label: string }[] = [
@@ -48,6 +49,8 @@ export interface SeabedPoint {
   slope: number | null;
   /** Metres; null where the depth is not from a surveyed surface. */
   roughness: number | null;
+  /** Metres, over 10 m; null where the depth is not from the LiDAR. */
+  roughGround: number | null;
 }
 
 // --- Reading the files ------------------------------------------------------------
@@ -101,6 +104,8 @@ export class Seabed {
     private roughness: Uint8Array,
     private bottom: Uint8Array,
     private bottomSource: Uint8Array,
+    /** Rough ground, where the build has it; the rest of the seabed works without. */
+    private roughGround: Uint8Array | null,
   ) {
     const land = source.map((code) => (code === 0 ? 1 : 0));
     this.land = land;
@@ -129,6 +134,13 @@ export class Seabed {
       loadGrid(layers.bottom.file, "uint8", cells),
       loadGrid(layers.bottom_source.file, "uint8", cells),
     ]);
+    const rough = layers.fine_roughness;
+    const roughGround = rough
+      ? await loadGrid(rough.file, "uint8", cells).catch((error) => {
+          console.error(error);
+          return null;
+        })
+      : null;
     return new Seabed(
       manifest,
       depth as Uint16Array,
@@ -137,7 +149,13 @@ export class Seabed {
       roughness as Uint8Array,
       bottom as Uint8Array,
       bottomSource as Uint8Array,
+      roughGround as Uint8Array | null,
     );
+  }
+
+  /** Whether there is a rough-ground layer to show. */
+  get hasRoughGround(): boolean {
+    return this.roughGround !== null;
   }
 
   /**
@@ -209,6 +227,7 @@ export class Seabed {
       bottomSource,
       slope: scaled(layers.slope, this.slope[i]),
       roughness: scaled(layers.roughness, this.roughness[i]),
+      roughGround: this.roughGround && layers.fine_roughness ? scaled(layers.fine_roughness, this.roughGround[i]) : null,
     };
   }
 
@@ -229,6 +248,14 @@ export class Seabed {
       const steps = DEPTH_BANDS.slice(0, -1).map((band) => band.upTo);
       const colours = DEPTH_BANDS.map((_, band) => colour(`--depth-${band}`));
       paintSteps(image.data, frame, cells, fine ? drawing.depth : layers.depth, steps, colours);
+      return image;
+    }
+    if (overlay === "rough") {
+      // Always the 100 m grid: that is the scale the layer is worked out at.
+      const rough = layers.fine_roughness;
+      if (!rough || !this.roughGround) return image;
+      const colours = [...rough.bands_m, Infinity].map((_, band) => colour(`--rough-${band}`));
+      paintSteps(image.data, frame, { ...coarse, cells: this.roughGround }, rough, rough.bands_m, colours);
       return image;
     }
 
