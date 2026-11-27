@@ -251,6 +251,22 @@
      "licence": "Not stated on the map service; attributed to the Department of Conservation"
     }
    ]
+  },
+  "fine_roughness": {
+   "dtype": "uint8",
+   "scale": 0.01,
+   "offset": -0.01,
+   "file": "fine_roughness.bin.gz",
+   "unit": "m",
+   "label": "Rough ground",
+   "note": "How uneven the bottom is over 10 m: the spread of depth about a plane through each 10 m square of the 2 m LiDAR, and of a cell's hundred squares the third roughest. Only where the depth is from the LiDAR. Not used by the bottom type or the habitat index.",
+   "bands_m": [
+    0.1,
+    0.15,
+    0.2,
+    0.3
+   ],
+   "reading": "Under 0.10 m in 91% of the cells with a charted sample of sand or mud; over it in 75% of the cells charted as rock."
   }
  },
  "quality": [
@@ -330,5 +346,58 @@
    100
   ],
   "note": "Drawn from the 20 m drawing grid. Not for navigation."
+ },
+ "relief": {
+  "built": "2026-11-28",
+  "note": "Shading appears only where the depth was measured, by LiDAR or by multibeam sonar.",
+  "tile_px": 256,
+  "exaggeration": 8.0,
+  "lights": [
+   {
+    "azimuth_deg": 315.0,
+    "altitude_deg": 45.0,
+    "weight": 0.5
+   },
+   {
+    "azimuth_deg": 255.0,
+    "altitude_deg": 45.0,
+    "weight": 0.25
+   },
+   {
+    "azimuth_deg": 15.0,
+    "altitude_deg": 45.0,
+    "weight": 0.25
+   }
+  ],
+  "archives": [
+   {
+    "key": "multibeam",
+    "url": "/tiles/relief_multibeam.pmtiles",
+    "version": "f298b6301819",
+    "tiles": 204,
+    "bytes": 892472,
+    "min_zoom": 9,
+    "max_zoom": 14,
+    "cell_m": 20,
+    "smooth_m": 20.0,
+    "name": "LINZ Shipping Lane 1 Multibeam 20m Depth Model (surveys HS6 and HS15)",
+    "url_source": "https://data.linz.govt.nz/layer/116628",
+    "licence": "CC BY 4.0, Toitū Te Whenua Land Information New Zealand"
+   },
+   {
+    "key": "lidar",
+    "url": "/tiles/relief_lidar.pmtiles",
+    "version": "9516ee1f4ed1",
+    "tiles": 1942,
+    "bytes": 15242849,
+    "min_zoom": 9,
+    "max_zoom": 16,
+    "cell_m": 2,
+    "smooth_m": 3.0,
+    "name": "LINZ coastal LiDAR, Whangārei to Bream Bay and Mangawhai to Snells (2025), 2 m",
+    "url_source": "https://registry.opendata.aws/nz-coastal/",
+    "licence": "CC BY 4.0, Toitū Te Whenua Land Information New Zealand"
+   }
+  ]
  }
 }

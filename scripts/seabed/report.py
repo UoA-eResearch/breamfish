@@ -9,6 +9,8 @@ comparison gets.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 
 from seabed import bottom, depth, grid
@@ -294,6 +296,368 @@ def markdown(facts: dict, lidar_max_depth_m: float) -> str:
             ["Class", "Cells", "Share of sea"],
             [[kinds[k], f"{n:,}", share(n)] for k, n in cells["bottom"].items()],
         ),
+        "",
+    ]
+    return "\n".join(parts)
+
+
+# --- Rough ground ---------------------------------------------------------------------------
+#
+# Written by scripts/build_relief.py, as the last section of the same report. The seabed
+# build keeps the section when it rewrites the rest.
+
+ROUGH_GROUND_HEADING = "## Rough ground from the 2 m LiDAR"
+ROUGH_THRESHOLDS_M = (0.10, 0.15, 0.20, 0.30)
+ROUGH_DEPTH_BANDS_M = (-3, 5, 10, 20, 30, 40)
+PUBLISHED_MEASURE = "Rough ground, as published: the third roughest 10 m square"
+GRID_ROUGHNESS_MEASURE = "Roughness of the 100 m grid: about one plane through the cell"
+# Two ways of scoring that differ by less than this in AUC are not told apart by labels
+# this few: with some hundreds of cells a side, an AUC is good to about two hundredths.
+AUC_TIE = 0.02
+
+
+def auc(score: np.ndarray, positive: np.ndarray, negative: np.ndarray) -> float | None:
+    """The chance that a cell picked from positive scores higher than one picked from
+    negative, ties counting half. 0.5 is no better than a coin; None if either is empty."""
+    from scipy.stats import rankdata
+
+    have = ~np.isnan(score)
+    high, low = score[positive & have], score[negative & have]
+    if len(high) == 0 or len(low) == 0:
+        return None
+    ranks = rankdata(np.concatenate([high, low]))
+    above = ranks[: len(high)].sum() - len(high) * (len(high) + 1) / 2
+    return round(float(above / (len(high) * len(low))), 3)
+
+
+def _spread(values: np.ndarray) -> dict:
+    values = values[~np.isnan(values)]
+    if len(values) == 0:
+        return {"cells": 0}
+    low, lower, middle, upper, high = np.percentile(values, [10, 25, 50, 75, 90])
+    return {
+        "cells": int(len(values)),
+        "p10_m": round(float(low), 2),
+        "p25_m": round(float(lower), 2),
+        "median_m": round(float(middle), 2),
+        "p75_m": round(float(upper), 2),
+        "p90_m": round(float(high), 2),
+    }
+
+
+def rough_ground(windows, fine, cell_depth, roughness, slope, kind, kind_source) -> dict:
+    """How well rough ground tells rock from soft bottom, where both maps and LiDAR speak.
+
+    windows is the roughness of every 10 m square; fine is the layer made from it, as it
+    is published; the rest are the 100 m grids as committed. Two sets of labels, neither of them
+    the truth: the chart (cells it marks as rock against cells with a charted sample of
+    sand or mud) and the habitat map (rock against soft sediment).
+    """
+    from seabed import relief
+
+    have = ~np.isnan(fine)
+    charted = kind_source != bottom.HABITAT_MAP
+    soft = np.isin(kind, [bottom.SAND, bottom.MUD])
+    groups = {
+        "chart_rock": have & (kind == bottom.ROCK) & (kind_source == bottom.CHART_ROCK),
+        "chart_soft": have & soft & (kind_source == bottom.CHART_SAMPLE),
+        "habitat_rock": have & (kind == bottom.ROCK) & ~charted,
+        "habitat_soft": have & (soft | (kind == bottom.SOFT)) & ~charted,
+    }
+    cells, enough = relief.cell_windows(windows)
+    with warnings.catch_warnings():
+        # numpy warns about a cell with no windows at all; those cells are masked anyway.
+        warnings.simplefilter("ignore", RuntimeWarning)
+        roughest = np.where(enough, np.nanmax(cells, axis=2), np.nan)
+        mean = np.where(enough, np.nanmean(cells, axis=2), np.nan)
+        median = np.where(enough, np.nanmedian(cells, axis=2), np.nan)
+    # To the centimetre, like the published layer, so that all of them tie alike.
+    measures = {
+        PUBLISHED_MEASURE: fine,
+        "The roughest 10 m square": np.round(roughest, 2),
+        "The tenth roughest 10 m square": np.round(relief.cell_roughness(windows, 10), 2),
+        "The mean of the 10 m squares": np.round(mean, 2),
+        "The median of the 10 m squares": np.round(median, 2),
+        GRID_ROUGHNESS_MEASURE: roughness,
+        "Slope of the 100 m grid": slope,
+    }
+    not_rock = have & (kind != bottom.ROCK)
+    return {
+        "cells": int(have.sum()),
+        "groups": {key: _spread(fine[mask]) for key, mask in groups.items()},
+        "everywhere": _spread(fine[have]),
+        "auc": [
+            {
+                "measure": label,
+                "chart": auc(score, groups["chart_rock"], groups["chart_soft"]),
+                "habitat": auc(score, groups["habitat_rock"], groups["habitat_soft"]),
+            }
+            for label, score in measures.items()
+        ],
+        "thresholds": [
+            {
+                "above_m": threshold,
+                **{key: int((fine[mask] > threshold).sum()) for key, mask in groups.items()},
+            }
+            for threshold in ROUGH_THRESHOLDS_M
+        ],
+        "floor_by_depth": [
+            {"from_m": low, "to_m": high, **_spread(fine[not_rock & in_band])}
+            for low, high in zip(ROUGH_DEPTH_BANDS_M[:-1], ROUGH_DEPTH_BANDS_M[1:], strict=True)
+            for in_band in [(cell_depth >= low) & (cell_depth < high)]
+        ],
+    }
+
+
+def without_rough_ground(text: str) -> str:
+    """A report with the rough-ground section taken off its end."""
+    at = text.find(ROUGH_GROUND_HEADING)
+    return text if at < 0 else text[:at]
+
+
+def rough_ground_section(text: str) -> str:
+    """The rough-ground section of a report, or nothing if it has none."""
+    at = text.find(ROUGH_GROUND_HEADING)
+    return "" if at < 0 else text[at:]
+
+
+def joined(main: str, rough_ground: str) -> str:
+    """The seabed build's report with the relief build's section after it."""
+    if not rough_ground:
+        return main
+    return main.rstrip("\n") + "\n\n" + rough_ground if main.strip() else rough_ground
+
+
+def rough_ground_reading(rough: dict) -> str:
+    """One line for the site on what a value means, from this build's own numbers."""
+    groups, line = rough["groups"], rough["thresholds"][0]
+    soft, rock = groups["chart_soft"]["cells"], groups["chart_rock"]["cells"]
+    if not soft or not rock:
+        return ""
+    return (
+        f"Under {line['above_m']:.2f} m in {100 * (soft - line['chart_soft']) / soft:.0f}% of "
+        f"the cells with a charted sample of sand or mud; over it in "
+        f"{100 * line['chart_rock'] / rock:.0f}% of the cells charted as rock."
+    )
+
+
+def shade_agreement(lidar_stored: np.ndarray, multibeam_shade: np.ndarray) -> dict:
+    """Do the two surveys show the same shapes where both measured the same seabed?
+
+    lidar_stored is the LiDAR's stored shade on its fine grid; multibeam_shade is the
+    multibeam's signed shade on its coarser one, before the LiDAR's cover is cut out of
+    it. The LiDAR's shade is averaged over each multibeam cell it all but fills, and the
+    two are correlated.
+    """
+    from seabed import relief
+
+    factor = lidar_stored.shape[0] // multibeam_shade.shape[0]
+    rows, cols = multibeam_shade.shape
+    blocks = lidar_stored.reshape(rows, factor, cols, factor)
+    valid = blocks != relief.NO_SHADE
+    count = valid.sum(axis=(1, 3))
+    total = np.where(valid, blocks, 0).sum(axis=(1, 3), dtype=np.float64)
+    both = (count >= 0.9 * factor * factor) & ~np.isnan(multibeam_shade)
+    if both.sum() < 3:
+        return {"cells": int(both.sum())}
+    lidar = total[both] / count[both] / 127
+    if lidar.std() == 0 or multibeam_shade[both].std() == 0:
+        return {"cells": int(both.sum())}
+    return {
+        "cells": int(both.sum()),
+        "cell_m": int(round(grid.CELL_M * grid.NROWS / rows)),
+        "correlation": round(float(np.corrcoef(lidar, multibeam_shade[both])[0, 1]), 2),
+    }
+
+
+def _spread_row(label: str, spread: dict) -> list:
+    if not spread["cells"]:
+        return [label, 0, "", "", "", "", ""]
+    return [
+        label,
+        f"{spread['cells']:,}",
+        *(f"{spread[key]:.2f}" for key in ("p10_m", "p25_m", "median_m", "p75_m", "p90_m")),
+    ]
+
+
+def _share(count: int, of: int) -> str:
+    return f"{count:,} ({100 * count / of:.0f}%)" if of else "0"
+
+
+def _verdict(facts: dict) -> str:
+    """What the numbers say about using rough ground as a source of bottom type. Worded
+    from the numbers of this build, so it cannot outlive them."""
+    by_measure = {row["measure"]: row for row in facts["auc"]}
+    fine, coarse = by_measure[PUBLISHED_MEASURE], by_measure[GRID_ROUGHNESS_MEASURE]
+    if fine["chart"] is None or coarse["chart"] is None:
+        return (
+            "There are no cells with both a charted bottom and LiDAR to test it on, so "
+            "nothing here supports using it as a source of bottom type."
+        )
+    gap = fine["chart"] - coarse["chart"]
+    if gap > AUC_TIE:
+        compared = (
+            f"It tells charted rock from charted sand and mud better than the roughness the "
+            f"100 m grid already has ({fine['chart']:.2f} against {coarse['chart']:.2f})"
+        )
+    elif gap < -AUC_TIE:
+        compared = (
+            f"It tells charted rock from charted sand and mud less well than the roughness "
+            f"the 100 m grid already has ({fine['chart']:.2f} against {coarse['chart']:.2f})"
+        )
+    else:
+        compared = (
+            f"It tells charted rock from charted sand and mud about as well as the roughness "
+            f"the 100 m grid already has ({fine['chart']:.2f} against {coarse['chart']:.2f}), "
+            "and no better"
+        )
+    groups, lowest = facts["groups"], facts["thresholds"][0]
+    rock, soft = groups["chart_rock"]["cells"], groups["chart_soft"]["cells"]
+    missed = rock - lowest["chart_rock"]
+    numbers = (
+        f"{compared}. At {lowest['above_m']:.2f} m, {_share(missed, rock)} of the cells the "
+        f"chart marks as rock read as smooth, and {_share(lowest['chart_soft'], soft)} of the "
+        "cells with a sample of sand or mud read as rough. The labels are part of that: a "
+        "cell is marked rock if a charted rock area touches any corner of it, and a sample "
+        "speaks for one point of its hectare."
+    )
+    if missed > 0.1 * rock or lowest["chart_soft"] > 0.05 * soft:
+        return (
+            f"{numbers} Rough ground is a hint that a cell holds reef, not a measurement of "
+            "what the bottom is made of, and these numbers do not support overruling a "
+            "chart or a sample with it. They do support a fourth source placed below the "
+            "three there are: one that classes water they leave as soft sediment or "
+            "unmapped, as a class of its own (rough ground, likely reef) and not as rock, "
+            "with a line that rises with depth as the table above shows the floor doing. "
+            "Until the habitat index has been tested with and without it, it stays out."
+        )
+    return (
+        f"{numbers} On these numbers it could stand as a fourth source of bottom type, "
+        "below the chart and its samples. It stays out until the habitat index has been "
+        "tested with and without it."
+    )
+
+
+def _agreement(agree: dict) -> str:
+    if "correlation" not in agree:
+        return "The two surveys share too little water to compare their shading."
+    return (
+        f"Where both surveys measured the same seabed ({agree['cells']:,} squares of "
+        f"{agree['cell_m']} m), the LiDAR's shade averaged to {agree['cell_m']} m and the "
+        f"multibeam's own have a correlation of {agree['correlation']:.2f}. The surveys were "
+        "made about twenty years apart and by different means, so shapes that both show "
+        "are the seabed's and not one survey's artefacts."
+    )
+
+
+def rough_ground_markdown(facts: dict) -> str:
+    """The last section of the report, written by scripts/build_relief.py."""
+    rough = facts["rough_ground"]
+    groups = rough["groups"]
+    labels = (
+        ("chart_rock", "Chart: marked as rock"),
+        ("chart_soft", "Chart: a sample of sand or mud"),
+        ("habitat_rock", "Habitat map: rock"),
+        ("habitat_soft", "Habitat map: sand, mud or soft sediment"),
+    )
+    score = lambda value: "none to test" if value is None else f"{value:.3f}"  # noqa: E731
+    parts = [
+        ROUGH_GROUND_HEADING,
+        "",
+        "Written by `scripts/build_relief.py`; do not edit by hand. It describes "
+        "`web/public/seabed/fine_roughness.bin.gz`. The method is in [seabed.md](seabed.md).",
+        "",
+        f"The layer has a value for {rough['cells']:,} cells: those whose depth is the "
+        "LiDAR's. Each is the third roughest of the cell's hundred 10 m squares, and a "
+        "square's roughness is the spread of the 2 m LiDAR depths in it about their "
+        "best-fit plane, in metres. It is published and shown; nothing else is built from "
+        "it.",
+        "",
+        "The relief tiles from the same build shade "
+        f"{facts['shaded_km2']['lidar']:,} km² from the LiDAR and "
+        f"{facts['shaded_km2']['multibeam']:,} km² from the multibeam. "
+        + _agreement(facts["surveys_agree"]),
+        "",
+        "### By what the maps say the bottom is",
+        "",
+        "Neither map is the truth. The chart marks a cell as rock if a charted rock area "
+        "touches it or a charted rock stands in it; a seabed sample is one point in the "
+        "hectare. The habitat map was drawn at a coarse scale.",
+        "",
+        _table(
+            [
+                "Cells",
+                "Count",
+                "Lowest tenth (m)",
+                "Quarter",
+                "Median",
+                "Three quarters",
+                "Highest tenth",
+            ],
+            [_spread_row(label, groups[key]) for key, label in labels]
+            + [_spread_row("Every cell with a value", rough["everywhere"])],
+        ),
+        "",
+        "### How well it separates them",
+        "",
+        "The chance that a rock cell scores higher than a soft one (the area under the ROC "
+        "curve): 1 is perfect, 0.5 is a coin. The first column is charted rock against "
+        "charted samples of sand or mud; the second is the habitat map's rock against its "
+        "soft sediment. Other ways of summarising the same 10 m squares, and the two "
+        "terrain layers the 100 m grid already has, are scored on the same cells. With "
+        f"this few labelled cells, differences under about {AUC_TIE:.2f} mean nothing.",
+        "",
+        _table(
+            ["Scored by", "Chart labels", "Habitat map labels"],
+            [[row["measure"], score(row["chart"]), score(row["habitat"])] for row in rough["auc"]],
+        ),
+        "",
+        "### If a line were drawn",
+        "",
+        "Cells rougher than each value, of those the maps class each way.",
+        "",
+        _table(
+            [
+                "Rougher than (m)",
+                "Of chart rock",
+                "Of chart sand or mud",
+                "Of habitat map rock",
+                "Of habitat map soft sediment",
+            ],
+            [
+                [
+                    f"{row['above_m']:.2f}",
+                    *(_share(row[key], groups[key]["cells"]) for key, _ in labels),
+                ]
+                for row in rough["thresholds"]
+            ],
+        ),
+        "",
+        "The last column is the rough ground the habitat map calls soft: either reef it "
+        "misses, or sand waves, channel edges and survey noise.",
+        "",
+        "### The floor rises with depth",
+        "",
+        "Cells not classed as rock, by depth. The LiDAR's returns are noisier in deeper "
+        "water, so the same flat sand scores higher there, and one line for all depths "
+        "would be too strict inshore or too loose offshore.",
+        "",
+        _table(
+            ["Depth (m)", "Cells", "Median (m)", "Highest tenth (m)"],
+            [
+                [
+                    f"{row['from_m']} to {row['to_m']}",
+                    f"{row['cells']:,}",
+                    f"{row['median_m']:.2f}" if row["cells"] else "",
+                    f"{row['p90_m']:.2f}" if row["cells"] else "",
+                ]
+                for row in rough["floor_by_depth"]
+            ],
+        ),
+        "",
+        "### As a source of bottom type",
+        "",
+        _verdict(rough),
         "",
     ]
     return "\n".join(parts)

@@ -32,13 +32,15 @@ WEST, SOUTH = grid.BOX_WEST - MARGIN_DEG, grid.BOX_SOUTH - MARGIN_DEG
 EAST, NORTH = grid.BOX_EAST + MARGIN_DEG, grid.BOX_NORTH + MARGIN_DEG
 
 LIDAR_BUCKET = "https://nz-coastal.s3.ap-southeast-2.amazonaws.com"
-# The two 2025 coastal surveys that meet in the box, and their 10 m tiles that touch it.
-# Where both have a value the first listed is used.
+# The two 2025 coastal surveys that meet in the box, and their tiles that touch it. The
+# bucket holds the same sheets at 10 m, 2 m and 1 m. Where both surveys have a value the
+# first listed is used. Sheet AZ32 of the second survey lies south of the box.
 LIDAR_TILES = (
     ("northland/whangarei-to-bream-bay_2025", ("AX30", "AX31", "AY31")),
     ("auckland/mangawhai-to-snells_2025", ("AY31", "AY32")),
 )
-LIDAR_RES_M = 10
+LIDAR_RES_M = 10  # what the grids are built from
+LIDAR_RELIEF_RES_M = 2  # what the shaded relief and the fine roughness are built from
 
 LDS = "https://data.linz.govt.nz/services"
 MULTIBEAM_LAYER = 116628  # Shipping Lane 1 Multibeam 20m Depth Model (1999)
@@ -124,32 +126,48 @@ def _cached_json(path: Path, fetch) -> dict:
 # --- LiDAR ------------------------------------------------------------------------------
 
 
-def lidar_paths(raw: Path) -> list[Path]:
-    """The 10 m LiDAR tiles, downloaded from the public bucket if not cached."""
+def lidar_paths(raw: Path, res_m: int = LIDAR_RES_M) -> list[Path]:
+    """The LiDAR tiles at res_m, downloaded from the public bucket if not cached.
+
+    The 10 m tiles keep the cache names they have always had; any other resolution has
+    it in the name, so the two never collide.
+    """
+    suffix = "" if res_m == LIDAR_RES_M else f"_{res_m}m"
     paths = []
     with _client() as client:
         for survey, tiles in LIDAR_TILES:
             for tile in tiles:
-                path = raw / "lidar" / f"{survey.split('/')[1]}_{tile}.tiff"
+                path = raw / "lidar" / f"{survey.split('/')[1]}_{tile}{suffix}.tiff"
                 if not path.exists():
-                    url = f"{LIDAR_BUCKET}/{survey}/dem_{LIDAR_RES_M}m/2193/{tile}.tiff"
-                    response = client.get(url)
-                    response.raise_for_status()
+                    url = f"{LIDAR_BUCKET}/{survey}/dem_{res_m}m/2193/{tile}.tiff"
                     path.parent.mkdir(parents=True, exist_ok=True)
-                    path.write_bytes(response.content)
+                    # To a temporary name first: a 2 m sheet is tens of megabytes, and
+                    # a download cut short must not be taken for the file.
+                    partial = path.with_suffix(".part")
+                    with client.stream("GET", url) as response, partial.open("wb") as out:
+                        response.raise_for_status()
+                        for chunk in response.iter_bytes(1 << 20):
+                            out.write(chunk)
+                    partial.replace(path)
                 paths.append(path)
     return paths
 
 
-def mosaic(paths: list[Path], res_m: int) -> np.ndarray:
+def mosaic(paths: list[Path], res_m: int, window=None) -> np.ndarray:
     """Lay rasters that are already in NZTM at res_m on the nested fine grid (NaN = no data).
 
     Tiles must sit on the same res_m lattice as the grid; nothing is resampled. Where
     tiles overlap, the first one with a value is kept.
+
+    window is (row, col, rows, cols) in fine cells, to read one block of the grid and
+    not all of it: at 2 m the whole grid is 1.5 GB. A window may reach past the edge of
+    the grid, and is read from the tiles there too, so a block can carry a halo.
     """
     import rasterio
 
-    rows, cols = grid.fine_shape(res_m)
+    if window is None:
+        window = (0, 0, *grid.fine_shape(res_m))
+    top, left, rows, cols = window
     out = np.full((rows, cols), np.nan, dtype=np.float32)
     for path in paths:
         with rasterio.open(path) as src:
@@ -160,14 +178,14 @@ def mosaic(paths: list[Path], res_m: int) -> np.ndarray:
             row0 = (grid.NORTH_N - t.f) / res_m
             if col0 != int(col0) or row0 != int(row0):
                 raise ValueError(f"{path.name}: not on the grid's {res_m} m lattice")
-            col0, row0 = int(col0), int(row0)
-            # The part of the tile that falls inside the grid.
+            col0, row0 = int(col0) - left, int(row0) - top
+            # The part of the tile that falls inside the window.
             r_lo, r_hi = max(0, row0), min(rows, row0 + src.height)
             c_lo, c_hi = max(0, col0), min(cols, col0 + src.width)
             if r_lo >= r_hi or c_lo >= c_hi:
                 continue
-            window = rasterio.windows.Window(c_lo - col0, r_lo - row0, c_hi - c_lo, r_hi - r_lo)
-            tile = src.read(1, window=window).astype(np.float32)
+            part = rasterio.windows.Window(c_lo - col0, r_lo - row0, c_hi - c_lo, r_hi - r_lo)
+            tile = src.read(1, window=part).astype(np.float32)
             tile[tile == src.nodata] = np.nan
             target = out[r_lo:r_hi, c_lo:c_hi]
             np.copyto(target, tile, where=np.isnan(target))

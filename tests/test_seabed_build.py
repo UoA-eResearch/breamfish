@@ -270,3 +270,31 @@ def test_written_files_match_what_the_manifest_says(built, tmp_path):
     report = (tmp_path / "report.md").read_text()
     assert "## LiDAR against charted soundings" in report and "## Spot checks" in report
     assert "| 1955 to 1962 | flat | 1 | -0.40 |" in report
+
+
+def test_a_rebuild_keeps_what_the_relief_build_added(built, tmp_path):
+    """scripts/build_relief.py adds a layer and a key to the manifest and a section to
+    the report. Writing the seabed again must not drop them."""
+    from seabed import report
+
+    grids, facts = built
+    out, report_path = tmp_path / "seabed", tmp_path / "report.md"
+    build_seabed.write(grids, facts, out, report_path)
+    plain = json.loads((out / "manifest.json").read_text())
+    assert "relief" not in plain and "fine_roughness" not in plain["layers"]
+    assert report.ROUGH_GROUND_HEADING not in report_path.read_text()
+
+    added = {**plain, "relief": {"archives": []}}
+    added["layers"] = {**plain["layers"], "fine_roughness": {"file": "fine_roughness.bin.gz"}}
+    publish.write_json(out / "manifest.json", added)
+    section = f"{report.ROUGH_GROUND_HEADING}\n\nWhat the relief build found.\n"
+    report_path.write_text(report.joined(report_path.read_text(), section))
+
+    build_seabed.write(grids, facts, out, report_path)
+    again = json.loads((out / "manifest.json").read_text())
+    assert again == added
+    text = report_path.read_text()
+    assert text.endswith("\n\n" + section) and text.count(report.ROUGH_GROUND_HEADING) == 1
+    assert report.without_rough_ground(text).rstrip("\n") == report.markdown(
+        facts, build_seabed.LIDAR_MAX_DEPTH_M
+    ).rstrip("\n")

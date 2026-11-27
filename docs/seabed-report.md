@@ -112,3 +112,66 @@ All sources together. Where the depth is from the chart this is not an independe
 | Shell | 18 | 0.0% |
 | Gravel or coarse sediment | 313 | 0.3% |
 | Soft sediment, sand or mud not told apart | 76,855 | 74.7% |
+
+## Rough ground from the 2 m LiDAR
+
+Written by `scripts/build_relief.py`; do not edit by hand. It describes `web/public/seabed/fine_roughness.bin.gz`. The method is in [seabed.md](seabed.md).
+
+The layer has a value for 27,302 cells: those whose depth is the LiDAR's. Each is the third roughest of the cell's hundred 10 m squares, and a square's roughness is the spread of the 2 m LiDAR depths in it about their best-fit plane, in metres. It is published and shown; nothing else is built from it.
+
+The relief tiles from the same build shade 270.0 km² from the LiDAR and 396.8 km² from the multibeam. Where both surveys measured the same seabed (21,617 squares of 20 m), the LiDAR's shade averaged to 20 m and the multibeam's own have a correlation of 0.84. The surveys were made about twenty years apart and by different means, so shapes that both show are the seabed's and not one survey's artefacts.
+
+### By what the maps say the bottom is
+
+Neither map is the truth. The chart marks a cell as rock if a charted rock area touches it or a charted rock stands in it; a seabed sample is one point in the hectare. The habitat map was drawn at a coarse scale.
+
+| Cells | Count | Lowest tenth (m) | Quarter | Median | Three quarters | Highest tenth |
+|---|---|---|---|---|---|---|
+| Chart: marked as rock | 404 | 0.07 | 0.11 | 0.34 | 0.68 | 0.90 |
+| Chart: a sample of sand or mud | 121 | 0.02 | 0.03 | 0.04 | 0.06 | 0.10 |
+| Habitat map: rock | 552 | 0.10 | 0.15 | 0.23 | 0.42 | 0.62 |
+| Habitat map: sand, mud or soft sediment | 25,469 | 0.03 | 0.04 | 0.05 | 0.07 | 0.11 |
+| Every cell with a value | 27,302 | 0.03 | 0.04 | 0.05 | 0.07 | 0.13 |
+
+### How well it separates them
+
+The chance that a rock cell scores higher than a soft one (the area under the ROC curve): 1 is perfect, 0.5 is a coin. The first column is charted rock against charted samples of sand or mud; the second is the habitat map's rock against its soft sediment. Other ways of summarising the same 10 m squares, and the two terrain layers the 100 m grid already has, are scored on the same cells. With this few labelled cells, differences under about 0.02 mean nothing.
+
+| Scored by | Chart labels | Habitat map labels |
+|---|---|---|
+| Rough ground, as published: the third roughest 10 m square | 0.929 | 0.951 |
+| The roughest 10 m square | 0.943 | 0.950 |
+| The tenth roughest 10 m square | 0.885 | 0.945 |
+| The mean of the 10 m squares | 0.863 | 0.934 |
+| The median of the 10 m squares | 0.781 | 0.913 |
+| Roughness of the 100 m grid: about one plane through the cell | 0.917 | 0.928 |
+| Slope of the 100 m grid | 0.911 | 0.924 |
+
+### If a line were drawn
+
+Cells rougher than each value, of those the maps class each way.
+
+| Rougher than (m) | Of chart rock | Of chart sand or mud | Of habitat map rock | Of habitat map soft sediment |
+|---|---|---|---|---|
+| 0.10 | 303 (75%) | 11 (9%) | 490 (89%) | 2,793 (11%) |
+| 0.15 | 272 (67%) | 5 (4%) | 410 (74%) | 1,210 (5%) |
+| 0.20 | 246 (61%) | 3 (2%) | 323 (59%) | 589 (2%) |
+| 0.30 | 211 (52%) | 1 (1%) | 204 (37%) | 141 (1%) |
+
+The last column is the rough ground the habitat map calls soft: either reef it misses, or sand waves, channel edges and survey noise.
+
+### The floor rises with depth
+
+Cells not classed as rock, by depth. The LiDAR's returns are noisier in deeper water, so the same flat sand scores higher there, and one line for all depths would be too strict inshore or too loose offshore.
+
+| Depth (m) | Cells | Median (m) | Highest tenth (m) |
+|---|---|---|---|
+| -3 to 5 | 6,735 | 0.04 | 0.11 |
+| 5 to 10 | 3,345 | 0.04 | 0.11 |
+| 10 to 20 | 9,535 | 0.05 | 0.07 |
+| 20 to 30 | 5,784 | 0.06 | 0.13 |
+| 30 to 40 | 939 | 0.09 | 0.21 |
+
+### As a source of bottom type
+
+It tells charted rock from charted sand and mud about as well as the roughness the 100 m grid already has (0.93 against 0.92), and no better. At 0.10 m, 101 (25%) of the cells the chart marks as rock read as smooth, and 11 (9%) of the cells with a sample of sand or mud read as rough. The labels are part of that: a cell is marked rock if a charted rock area touches any corner of it, and a sample speaks for one point of its hectare. Rough ground is a hint that a cell holds reef, not a measurement of what the bottom is made of, and these numbers do not support overruling a chart or a sample with it. They do support a fourth source placed below the three there are: one that classes water they leave as soft sediment or unmapped, as a class of its own (rough ground, likely reef) and not as rock, with a line that rises with depth as the table above shows the floor doing. Until the habitat index has been tested with and without it, it stays out.

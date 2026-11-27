@@ -767,8 +767,21 @@ def write(grids: Grids, facts: dict, out: Path, report_path: Path) -> None:
         sigma_cells=0,
     )
     (out / "contours.geojson").write_text(json.dumps(lines, separators=(",", ":")) + "\n")
-    publish.write_json(out / "manifest.json", manifest(grids, facts, CONTOUR_LEVELS_M))
-    report_path.write_text(report.markdown(facts, LIDAR_MAX_DEPTH_M))
+    # scripts/build_relief.py adds a layer and a key to the manifest and a section to the
+    # report. They are kept here, and are out of date until that script is run again.
+    described = manifest(grids, facts, CONTOUR_LEVELS_M)
+    manifest_path = out / "manifest.json"
+    if manifest_path.exists():
+        before = json.loads(manifest_path.read_text())
+        if "relief" in before:
+            described["relief"] = before["relief"]
+        if "fine_roughness" in before.get("layers", {}):
+            described["layers"]["fine_roughness"] = before["layers"]["fine_roughness"]
+    publish.write_json(manifest_path, described)
+    rough_ground = report.rough_ground_section(
+        report_path.read_text() if report_path.exists() else ""
+    )
+    report_path.write_text(report.joined(report.markdown(facts, LIDAR_MAX_DEPTH_M), rough_ground))
     size = sum(path.stat().st_size for path in out.iterdir())
     print(f"wrote {len(files) + 6} files to {out} ({size / 1024:.0f} kB) and {report_path}")
 
