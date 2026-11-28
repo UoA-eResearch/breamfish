@@ -39,6 +39,20 @@ Things to know about these:
 - **How it is judged.** Northport's public weather page (`northport.co.nz/weatherfeed`, read 28 November 2026) gives measured wind at Berth 2, Marsden Pt Lead, One Tree Point, Portland and two other spots in the port, updated about every ten minutes, and wave height, period and direction from two wave-rider buoys. The cluster records it every ten minutes and compares both forecasts with it at the same hours and lead times. It is not shown on the site: Northport publishes it for navigation, with a disclaimer and no licence. Northport does not say where its sensors are; the positions used are the places they are named after (OpenStreetMap), probably within about 1 km. All are in the harbour, not over the open bay, so they test the forecast at its edge. The wave buoys could later check the wave forecast the same way.
 - **Nothing here is a second opinion yet.** WRF is steered by GFS; the wind the site draws for everyone is a different forecast. Where they agree is not independent evidence that either is right.
 
+## On trial: boats seen from space
+
+Shown on the map as its own layer, labelled as on trial. How it is made and checked: [boats.md](boats.md).
+
+| Source | Used for | Access | Licence and attribution |
+|---|---|---|---|
+| [Sentinel-2 L2A](https://registry.opendata.aws/sentinel-2-l2a-cogs/), tile 60HTF, 408 pictures with less than 60% cloud, July 2017 to November 2026 | Finding boats on clear water at about 11:25 New Zealand time | Read once on the vhpc cluster from the public archive on AWS through the [Earth Search](https://earth-search.aws.element84.com/v1) catalogue, no key. The site serves only the 1 km counts made from them | Copernicus data terms: free and open. Credit shown with the layer: "Contains modified Copernicus Sentinel data 2017–2026" |
+| [Qwen3-VL-8B-Instruct-FP8](https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-FP8), run on the cluster's L4 with vLLM 0.34 | Saying whether each candidate is a boat, cloud, a wave or something else | Weights fetched once to the cluster (9.9 GB) | Apache 2.0 |
+
+Things to know about these:
+
+- **The site depends on neither.** The counts are committed files; the cluster and the model are needed only to make them again.
+- **Pixels are 10 m.** A boat is seen mostly by its wake. Planet's daily 3 m pictures would be much better; access has been applied for (28 November 2026). The University of Auckland's GeoData Hub (`geodatahub.library.auckland.ac.nz`) lists Northland Regional Council aerial imagery and a Sentinel mosaic, behind University logins; its terms for a public site are unchecked.
+
 ## In use (stage 1, the seabed layers)
 
 These are fetched once by `scripts/build_seabed.py` on a development machine, not by the server. The grids built from them are committed under `web/public/seabed/`. Method and datum handling are in [seabed.md](seabed.md); the numbers for the committed build are in [seabed-report.md](seabed-report.md). All were fetched on 26 November 2026.

@@ -70,6 +70,17 @@
   --habitat-5: #4631ad;
   --veil: #f3f2ee;
 
+  /* Boats seen from space: grey where the water was clear and no boat was seen,
+     then one green, pale to strong, a hue no other water layer uses. Fixed
+     objects (moorings, rocks) are outlined in a dark grey. */
+  --boats-0: #dddcd4;
+  --boats-1: #d3f0e2;
+  --boats-2: #9fdcbf;
+  --boats-3: #5cc096;
+  --boats-4: #1f9a6a;
+  --boats-5: #0d6644;
+  --boats-fixed: #52514e;
+
   /* The wind drawn moving over the map: light with a dark edge, so it shows
      over every layer above, and the same in both themes. */
   --flow: #ffffff;
@@ -123,6 +134,14 @@
     --habitat-4: #9f95ee;
     --habitat-5: #e2ddfc;
     --veil: #1a1a19;
+    /* On a dark map the busiest water is the brightest. */
+    --boats-0: #3a3a37;
+    --boats-1: #0f3a2a;
+    --boats-2: #17603f;
+    --boats-3: #1f8a5a;
+    --boats-4: #4cc08c;
+    --boats-5: #b5ecd0;
+    --boats-fixed: #c3c2b7;
   }
 }
 
@@ -249,9 +268,11 @@ a {
   accent-color: var(--brand);
 }
 
+/* A row of buttons for one choice (the season, which passes): as many columns as buttons. */
 .layers-seasons {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 2px;
   margin: 6px 10px 2px;
   padding: 2px;
@@ -311,6 +332,17 @@ a {
   margin-top: 1px;
   border: 1px solid var(--border);
   border-radius: 3px;
+}
+
+/* The rule above would otherwise beat the hidden attribute. */
+.layers-seasons[hidden] {
+  display: none;
+}
+
+/* A key mark that is an outline, not a fill: the fixed objects in the boat layer. */
+.layers-key i.layers-outline {
+  border-width: 2px;
+  background: transparent;
 }
 
 /* The wind's key: a line for each strength, longer and heavier as it rises. */

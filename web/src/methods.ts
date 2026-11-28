@@ -2,10 +2,11 @@
 // part leans on, how it tests against real records, and its limits. Every
 // number and every sentence about the index comes from /habitat/manifest.json,
 // which scripts/build_habitat.py writes from the species file; this page lays
-// it out and works nothing out itself.
+// it out and works nothing out itself. The boat count below it is laid out the
+// same way from /boats/manifest.json (scripts/build_boats.py).
 
 import "./style.css";
-import { loadJson, type Curve, type HabitatFactor, type HabitatManifest, type Season, type ValidationGroup } from "./data";
+import { loadJson, type BoatsManifest, type Curve, type HabitatFactor, type HabitatManifest, type Season, type ValidationGroup } from "./data";
 
 type Child = Node | string;
 
@@ -190,3 +191,46 @@ loadJson<HabitatManifest>("/habitat/manifest.json")
     console.error(error);
     target.replaceChildren(el("p", "The habitat index could not be loaded just now. Please try again shortly."));
   });
+
+function renderBoats(manifest: BoatsManifest): Node[] {
+  const { check } = manifest;
+  const link = el("a", manifest.source.label);
+  link.href = manifest.source.url;
+  link.target = "_blank";
+  link.rel = "noopener";
+  return [
+    el("h2", "Boats seen from space"),
+    el(
+      "p",
+      el("strong", "On trial. "),
+      `A second map layer shows where boats were seen in pictures taken by the Sentinel-2 satellites, from ${manifest.first_pass} to ${manifest.last_pass}. It says where people take their boats, in ${manifest.square_m / 1000} km squares. It is not a count of fish, and many of the boats are going somewhere, not fishing.`,
+    ),
+    el("p", manifest.how),
+    table(
+      ["Passes", "Clear passes used", "Boats", "Boats a pass"],
+      manifest.groups.map((g) => [g.label, String(g.passes), String(g.boats), String(g.boats_per_pass)]),
+    ),
+    el(
+      "p",
+      `A further ${manifest.passes_left_out} passes were left out as too rough or too broken by cloud to tell a boat from a whitecap. ${manifest.fixed_squares} squares hold something seen on most passes (moorings, rocks or buoys); they are outlined, and boats right beside those things are not counted.`,
+    ),
+    el("h3", "How well it finds boats"),
+    el(
+      "p",
+      `${check.sample} of the boats it kept were picked at random and their pictures looked at: ${check.certain} were certainly boats, ${check.likely} were likely boats, ${check.cloud_or_rock} were cloud or rock, and ${check.unclear} could not be told. ${check.note} Judged by ${check.judged_by}. These ${check.sample} were not used to set the checks.`,
+    ),
+    el("h3", "What it cannot tell you"),
+    el("ul", ...manifest.limits.map((text) => el("li", text))),
+    el("p", el("small", "From: ", link, `. ${manifest.source.licence}. Built ${manifest.built}.`)),
+  ];
+}
+
+const boatsTarget = document.getElementById("boats");
+if (boatsTarget) {
+  loadJson<BoatsManifest>("/boats/manifest.json")
+    .then((manifest) => {
+      boatsTarget.replaceChildren(...renderBoats(manifest));
+      if (window.location.hash === "#boats") boatsTarget.scrollIntoView();
+    })
+    .catch((error) => console.error(error));
+}

@@ -1,0 +1,73 @@
+{
+ "built": "2026-11-28",
+ "file": "boats.geojson",
+ "made_on_cluster": "2026-11-28T04:09:43Z",
+ "square_m": 1000,
+ "first_pass": "2017-07-14",
+ "last_pass": "2026-11-19",
+ "groups": [
+  {
+   "id": "all",
+   "label": "All passes",
+   "passes": 333,
+   "boats": 2055,
+   "boats_per_pass": 6.2
+  },
+  {
+   "id": "weekend",
+   "label": "Weekends and holidays",
+   "passes": 99,
+   "boats": 889,
+   "boats_per_pass": 9.0
+  },
+  {
+   "id": "weekday",
+   "label": "Weekdays",
+   "passes": 234,
+   "boats": 1166,
+   "boats_per_pass": 5.0
+  }
+ ],
+ "passes_left_out": 75,
+ "bands": {
+  "breaks_per_100_passes": [
+   1.5,
+   3.0,
+   6.0,
+   12.0
+  ],
+  "labels": [
+   "Clear water, no boat seen",
+   "Up to 1.5 per 100 passes",
+   "1.5 to 3",
+   "3 to 6",
+   "6 to 12",
+   "Over 12"
+  ]
+ },
+ "squares": 938,
+ "fixed_squares": 23,
+ "check": {
+  "sample": 60,
+  "certain": 34,
+  "likely": 18,
+  "cloud_or_rock": 3,
+  "unclear": 5,
+  "judged_by": "Claude, the AI assistant that built the count, by eye, on 28 November 2026",
+  "note": "Certain: a hull or a wake can be seen. Likely: a lone bright spot on open water, which is how a small boat at rest looks at this resolution."
+ },
+ "source": {
+  "label": "Copernicus Sentinel-2 L2A, tile 60HTF, read from the public archive on AWS (Earth Search catalogue)",
+  "url": "https://registry.opendata.aws/sentinel-2-l2a-cogs/",
+  "licence": "Contains modified Copernicus Sentinel data 2017\u20132026"
+ },
+ "how": "Every Sentinel-2 picture of the bay with less than 60% cloud was searched for small spots brighter than the water around them, on clear open water at least 200 m from shore. An open-weights vision model (Qwen3-VL-8B), shown a few labelled examples first, was asked whether each spot was a boat, cloud, a wave or something else. Its boat answers were kept only where five further checks agreed: the spot covers at least 3 pixels, it is bright enough, there is no cloud within 1 km, the sea that day was not too rough to tell, and the place is not one where something is seen on most passes. Each square's figure is the boats seen in it for every 100 passes on which it was clear.",
+ "limits": [
+  "Every picture is taken at about 11:25 New Zealand time, when the satellite passes, every few days at most. Where boats are at dawn, at dusk or at night is not in it.",
+  "Its pixels are 10 m across, so it sees a boat mostly by its wake. Boats at anchor or drifting are counted less often than boats under way.",
+  "Many boats in the busiest places are going somewhere, not fishing: the harbour channel is busy because every boat leaving the harbour uses it.",
+  "Rough days and cloudy days are left out, so this is where boats are on fine days.",
+  "Moored boats, rocks and buoys are in the same place on most passes. Such places are marked and the boats right by them are not counted.",
+  "Most open-water squares hold only a few boats in all the years, so the pattern is broad. A difference of one or two boats between neighbouring squares means nothing."
+ ]
+}

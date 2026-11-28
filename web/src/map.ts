@@ -1,6 +1,6 @@
 // The map: a self-hosted OpenStreetMap basemap of the bay, the snapper habitat
 // index, the seabed layers (depth, how sure the depth is, bottom type, rough
-// ground, contours), shaded relief where the depth was measured, the forecast
+// ground, contours), boats seen from space, shaded relief where the depth was measured, the forecast
 // wind drawn moving, the no-take marine reserve, boat ramps, and one tappable
 // marker per forecast zone.
 
@@ -13,7 +13,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
 import { comfortClass } from "./comfort";
-import type { ReliefArchive, SeabedManifest, Season, Style, VectorField } from "./data";
+import { loadJson, type BoatGroup, type BoatsManifest, type ReliefArchive, type SeabedManifest, type Season, type Style, type VectorField } from "./data";
 import { FLOW_BANDS, FlowLayer } from "./flow";
 import { Habitat, type HabitatPoint } from "./habitat";
 import type { Rgba } from "./paint";
@@ -55,9 +55,10 @@ function basemapLayers(flavor: "light" | "dark"): maplibregl.LayerSpecification[
   return rest;
 }
 
-type OverlayChoice = Overlay | "snapper" | "none";
+type OverlayChoice = Overlay | "snapper" | "boats" | "none";
 const OVERLAYS: { id: OverlayChoice; label: string }[] = [
   { id: "snapper", label: "Snapper habitat" },
+  { id: "boats", label: "Boats seen from space" },
   { id: "depth", label: "Depth" },
   { id: "quality", label: "How sure the depth is" },
   { id: "bottom", label: "Bottom type" },
@@ -73,6 +74,13 @@ const SEASONS: { id: Season; label: string }[] = [
 ];
 /** Where the method, the evidence and the checks are set out. */
 const METHODS = "/methods.html";
+const BOAT_GROUPS: { id: BoatGroup; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "weekend", label: "Weekends" },
+  { id: "weekday", label: "Weekdays" },
+];
+/** The boat layer's fill, as laid over the water. */
+const BOATS_OPACITY = 0.8;
 
 /** A small element with text, built without innerHTML so nothing needs escaping. */
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, text = "", className = ""): HTMLElementTagNameMap[K] {
@@ -164,6 +172,33 @@ function describeHabitat(point: HabitatPoint, habitat: Habitat, style: Style): H
   return box;
 }
 
+/** What the boat count says about a tapped 1 km square. Every figure is as published. */
+function describeBoats(props: Record<string, unknown>, manifest: BoatsManifest): HTMLElement {
+  const box = el("div", "", "spot spot-boats");
+  const count = (group: BoatGroup) => {
+    const boats = Number(props[`${group}_boats`]);
+    const seen = Number(props[`${group}_seen`]);
+    return `${boats} ${boats === 1 ? "boat" : "boats"} in ${seen} clear ${seen === 1 ? "pass" : "passes"}`;
+  };
+  const head = el("p", "", "spot-depth");
+  head.append(el("strong", count("all")), ` over this ${manifest.square_m / 1000} km square`);
+  const rows = el("dl");
+  for (const group of manifest.groups) {
+    if (group.id === "all") continue;
+    rows.append(el("dt", group.label), el("dd", count(group.id)));
+  }
+  box.append(head, rows);
+  if (props.fixed) {
+    box.append(el("p", "Something here is seen on most passes (moorings, a rock or a buoy): boats right beside it are not counted.", "spot-note"));
+  }
+  const link = el("a", "How this is counted");
+  link.href = `${METHODS}#boats`;
+  const note = el("p", "", "spot-note");
+  note.append(`Sentinel-2 pictures at about 11:25, ${manifest.first_pass.slice(0, 4)} to ${manifest.last_pass.slice(0, 4)}. Where boats were, not where fish are. `, link, ".");
+  box.append(note);
+  return box;
+}
+
 export interface ZoneMarker {
   id: string;
   label: string;
@@ -179,6 +214,9 @@ export class BayMap {
   private padding = { top: 0, right: 0, bottom: 0, left: 0 };
   private seabed: Seabed | null = null;
   private habitat: Habitat | null = null;
+  /** Boats seen from space: the manifest, and which passes are shown. */
+  private boats: BoatsManifest | null = null;
+  private boatGroup = (stored("boatGroup") ?? "all") as BoatGroup;
   private overlay = (stored("overlay") ?? "snapper") as OverlayChoice;
   /** The season the habitat layer shows: the present one until another is picked. */
   private season: Season = "summer";
@@ -343,7 +381,15 @@ export class BayMap {
       // The seabed layers still work without the habitat index.
       console.error(error);
     }
+    try {
+      this.boats = await loadJson<BoatsManifest>("/boats/manifest.json");
+      if (!this.boats.groups.some((g) => g.id === this.boatGroup)) this.boatGroup = "all";
+    } catch (error) {
+      // Everything else works without it.
+      console.error(error);
+    }
     if (!this.habitat && this.overlay === "snapper") this.overlay = "depth";
+    if (!this.boats && this.overlay === "boats") this.overlay = "depth";
     if (!this.seabed.hasRoughGround && this.overlay === "rough") this.overlay = "depth";
     const map = this.map;
     const css = getComputedStyle(document.documentElement);
@@ -430,7 +476,12 @@ export class BayMap {
       hide("seabed-veil");
       hide("shore");
     }
+    if (this.overlay !== "boats") {
+      hide("boats-fill");
+      hide("boats-fixed");
+    }
     if (this.overlay === "snapper") void this.showHabitat();
+    else if (this.overlay === "boats") this.showBoats();
     else if (this.overlay !== "none") this.paintedLayer(`seabed-${this.overlay}`, this.overlay, 0.8);
     for (const id of ["contours", "contours-label"]) {
       map.setLayoutProperty(id, "visibility", this.contours ? "visible" : "none");
@@ -490,6 +541,42 @@ export class BayMap {
       map.setPaintProperty("shore", "circle-color", fill);
     }
     map.setLayoutProperty("shore", "visibility", this.style === "shore" ? "visible" : "none");
+  }
+
+  /**
+   * Boats seen from space, as 1 km squares coloured by how many boats were seen per 100
+   * clear passes in the chosen group of passes. Squares holding something seen on most
+   * passes (moorings, rocks) are outlined. Under the relief, like the painted layers.
+   */
+  private showBoats(): void {
+    const map = this.map;
+    const boats = this.boats;
+    if (!boats) return;
+    const colours = boats.bands.labels.flatMap((_, i) => {
+      const [r, g, b] = this.colour(`--boats-${i}`);
+      return [i, `rgb(${r}, ${g}, ${b})`];
+    });
+    const fill = ["match", ["get", `${this.boatGroup}_band`], ...colours, "rgba(0, 0, 0, 0)"] as unknown as maplibregl.ExpressionSpecification;
+    if (!map.getLayer("boats-fill")) {
+      const [r, g, b] = this.colour("--boats-fixed");
+      map.addSource("boats", { type: "geojson", data: `/boats/${boats.file}`, attribution: boats.source.licence });
+      const above = this.reliefLayers[0] ?? "contours";
+      map.addLayer({ id: "boats-fill", type: "fill", source: "boats", paint: { "fill-color": fill, "fill-opacity": BOATS_OPACITY } }, above);
+      map.addLayer(
+        {
+          id: "boats-fixed",
+          type: "line",
+          source: "boats",
+          filter: ["==", ["get", "fixed"], true],
+          paint: { "line-color": `rgb(${r}, ${g}, ${b})`, "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1, 13, 2.5] },
+        },
+        above,
+      );
+    } else {
+      map.setPaintProperty("boats-fill", "fill-color", fill);
+    }
+    map.setLayoutProperty("boats-fill", "visibility", "visible");
+    map.setLayoutProperty("boats-fixed", "visibility", "visible");
   }
 
   /** The style of fishing chosen in the panel: it decides what the habitat layer greys out. */
@@ -554,14 +641,40 @@ export class BayMap {
       });
       seasons.append(button);
     }
+    const groups = el("div", "", "layers-seasons");
+    groups.setAttribute("role", "group");
+    groups.setAttribute("aria-label", "Which passes");
+    for (const { id, label } of BOAT_GROUPS) {
+      const button = el("button", label);
+      button.type = "button";
+      button.dataset.group = id;
+      button.addEventListener("click", () => {
+        this.boatGroup = id;
+        store("boatGroup", id);
+        this.showSeabed();
+        render();
+      });
+      groups.append(button);
+    }
     const render = () => {
       const chosen = OVERLAYS.find((o) => o.id === this.overlay)!;
+      const group = this.boats?.groups.find((g) => g.id === this.boatGroup);
       summary.textContent =
-        this.overlay === "none" ? "Map layer" : this.overlay === "snapper" ? `${chosen.label}: ${this.season}` : `Seabed: ${chosen.label.toLowerCase()}`;
+        this.overlay === "none"
+          ? "Map layer"
+          : this.overlay === "snapper"
+            ? `${chosen.label}: ${this.season}`
+            : this.overlay === "boats"
+              ? `Boats: ${(group?.label ?? "all passes").toLowerCase()}`
+              : `Seabed: ${chosen.label.toLowerCase()}`;
       key.replaceChildren();
       seasons.hidden = this.overlay !== "snapper";
       for (const button of seasons.children) {
         button.setAttribute("aria-pressed", String((button as HTMLElement).dataset.season === this.season));
+      }
+      groups.hidden = this.overlay !== "boats";
+      for (const button of groups.children) {
+        button.setAttribute("aria-pressed", String((button as HTMLElement).dataset.group === this.boatGroup));
       }
       if (this.overlay === "snapper" && this.habitat) {
         const { classes, reach, species } = this.habitat.manifest;
@@ -578,6 +691,22 @@ export class BayMap {
         link.href = METHODS;
         note.replaceChildren(
           `How well the depth, the bottom and the reef nearby suit ${species.name.toLowerCase()} in ${this.season}, ranked within the bay. Not a catch forecast. `,
+          link,
+          ".",
+        );
+      } else if (this.overlay === "boats" && this.boats && group) {
+        const boats = this.boats;
+        const bands = boats.bands.labels.map((label, i) => swatch(`--boats-${i}`, label)).reverse();
+        const fixed = el("li", "Outlined: moorings, rocks or buoys, seen on most passes; not counted");
+        const outline = el("i", "", "layers-outline");
+        outline.style.borderColor = "var(--boats-fixed)";
+        fixed.prepend(outline);
+        key.append(...bands, fixed);
+        const link = el("a", "How it is counted");
+        link.href = `${METHODS}#boats`;
+        const { certain, likely, sample } = boats.check;
+        note.replaceChildren(
+          `On trial. Boats seen by the Sentinel-2 satellite at about 11:25, on ${group.passes} clear passes from ${boats.first_pass.slice(0, 4)} to ${boats.last_pass.slice(0, 4)}: ${group.boats_per_pass} a pass in the bay. Where boats were, not where fish are. Checked by eye, ${certain + likely} of ${sample} were boats. `,
           link,
           ".",
         );
@@ -644,6 +773,7 @@ export class BayMap {
     choices.append(el("legend", "Colour the water by", "visually-hidden"));
     for (const { id, label } of OVERLAYS) {
       if (id === "snapper" && !this.habitat) continue;
+      if (id === "boats" && !this.boats) continue;
       if (id === "rough" && !seabed.hasRoughGround) continue;
       const input = el("input");
       input.type = "radio";
@@ -695,7 +825,7 @@ export class BayMap {
     const windRow = el("label", "", "layers-contours");
     windRow.append(wind, "Wind");
 
-    box.append(summary, choices, seasons, linesRow, key, note);
+    box.append(summary, choices, seasons, groups, linesRow, key, note);
     if (this.reliefLayers.length) box.append(shadingRow, reliefNote);
     box.append(windRow, windKey, windNote);
     this.renderControl = render;
@@ -779,6 +909,10 @@ export class BayMap {
       }
       const habitat = this.overlay === "snapper" ? this.habitat : null;
       const rating = el("div");
+      if (spot && this.overlay === "boats" && this.boats && map.getLayer("boats-fill")) {
+        const square = map.queryRenderedFeatures(event.point, { layers: ["boats-fill"] })[0];
+        if (square?.properties) content.append(describeBoats(square.properties, this.boats));
+      }
       if (spot) content.append(rating, describeSpot(spot, this.seabed?.manifest.layers.fine_roughness?.reading));
       popup.setDOMContent(content).addTo(map);
       // Once it has been laid out, so its real size and place are known.
