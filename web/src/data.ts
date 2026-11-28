@@ -280,6 +280,30 @@ export interface HabitatManifest {
   limits: string[];
 }
 
+/** Which passes of the satellite a boat count covers. */
+export type BoatGroup = "all" | "weekend" | "weekday";
+
+/** web/public/boats/manifest.json, written by scripts/build_boats.py. Change both sides together. */
+export interface BoatsManifest {
+  built: string;
+  /** The GeoJSON of squares, under /boats/. Each feature has <group>_seen, <group>_boats,
+      <group>_band (0 none seen, 1 to 5 by rate, -1 never clear in the group) and fixed. */
+  file: string;
+  made_on_cluster: string;
+  square_m: number;
+  first_pass: string;
+  last_pass: string;
+  groups: { id: BoatGroup; label: string; passes: number; boats: number; boats_per_pass: number }[];
+  passes_left_out: number;
+  bands: { breaks_per_100_passes: number[]; labels: string[] };
+  squares: number;
+  fixed_squares: number;
+  check: { sample: number; certain: number; likely: number; cloud_or_rock: number; unclear: number; judged_by: string; note: string };
+  source: { label: string; url: string; licence: string };
+  how: string;
+  limits: string[];
+}
+
 export async function loadJson<T>(path: string): Promise<T> {
   const response = await fetch(path, { cache: "no-cache" });
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);

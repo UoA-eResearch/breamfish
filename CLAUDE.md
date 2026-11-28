@@ -16,6 +16,7 @@ uv run python scripts/build_seabed.py     # rebuild the seabed grids (committed;
 uv run python scripts/build_relief.py     # rebuild the relief tiles and rough ground (committed; after build_seabed.py; no key)
 uv run python scripts/build_habitat.py    # rebuild the habitat index (committed; run after build_seabed.py or a species file change)
 python3 scripts/fetch_habitat_points.py   # refresh the snapper records the index is tested against (committed)
+uv run python scripts/build_boats.py URL  # rebuild the boats layer from the cluster's boats/site.json (committed)
 ```
 
 ## Layout
@@ -28,6 +29,7 @@ python3 scripts/fetch_habitat_points.py   # refresh the snapper records the inde
 - `scripts/seabed/` and `scripts/build_seabed.py`: the hand-run seabed build, described in [docs/seabed.md](docs/seabed.md). `web/src/seabed.ts` reads what `scripts/seabed/publish.py` writes; change both sides together.
 - `scripts/build_relief.py`, with `scripts/seabed/relief.py` (shading, rough ground) and `tiles.py` (map tiles in PMTiles archives): the second hand-run build. It writes `web/public/tiles/relief_*.pmtiles` and `web/public/seabed/fine_roughness.bin.gz`, and owns two entries of the seabed manifest (`relief`, `layers.fine_roughness`) and the last section of `docs/seabed-report.md`. `build_seabed.py` carries those over when it rewrites the rest. `web/src/map.ts` adds the archives as raster sources through the `pmtiles` protocol.
 - `src/breamfish/habitat.py` and `src/breamfish/species/snapper.toml`: the habitat index and everything it is built from, described in [docs/habitat.md](docs/habitat.md). `scripts/build_habitat.py` writes `web/public/habitat/`; `web/src/habitat.ts` and `web/src/methods.ts` read it. `grids.py` and `nztm.py` read grids and project points without numpy.
+- `scripts/build_boats.py` and `web/public/boats/`: boats seen in Sentinel-2 pictures, counted on the cluster and committed as 1 km squares, described in [docs/boats.md](docs/boats.md). `BoatsManifest` in `web/src/data.ts` mirrors its manifest; change both sides together. On trial, and never called fishing spots: it shows where boats were, not where fish are.
 - `web/src/paint.ts`: paints any grid onto the map a tile at a time. `web/methods.html` is the second page of the site.
 - `.github/workflows/ci.yml`: tests, builds, and publishes the `release` branch that the server runs.
 
